@@ -1,0 +1,21 @@
+*.log
+*.iml
+*.classpath
+*.project
+*.settings/
+*.idea/
+*.vscode/
+
+# Java
+target/
+*.jar
+*.war
+*.ear
+
+# Node / Vite
+frontend/node_modules/
+frontend/dist/
+
+# OS
+.DS_Store
+Thumbs.db

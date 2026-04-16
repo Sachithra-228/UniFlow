@@ -4,15 +4,12 @@ import AppLayout from "./layouts/AppLayout";
 import PublicLayout from "./layouts/PublicLayout";
 import AboutPage from "./pages/AboutPage";
 import BookingsPage from "./pages/BookingsPage";
-import ContactPage from "./pages/ContactPage";
 import DashboardPage from "./pages/DashboardPage";
 import FeaturesPage from "./pages/FeaturesPage";
 import LandingPage from "./pages/LandingPage";
 import ModulesPage from "./pages/ModulesPage";
-import NotificationsPage from "./pages/NotificationsPage";
 import ProfilePage from "./pages/ProfilePage";
 import ResourcesPage from "./pages/ResourcesPage";
-import TicketsPage from "./pages/TicketsPage";
 import UsersPage from "./pages/UsersPage";
 
 function App() {
@@ -23,7 +20,6 @@ function App() {
         <Route path="/features" element={<FeaturesPage />} />
         <Route path="/modules" element={<ModulesPage />} />
         <Route path="/about" element={<AboutPage />} />
-        <Route path="/contact" element={<ContactPage />} />
       </Route>
 
       <Route
@@ -36,8 +32,6 @@ function App() {
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/resources" element={<ProtectedRoute allowedRoles={["ADMIN"]}><ResourcesPage /></ProtectedRoute>} />
         <Route path="/bookings" element={<BookingsPage />} />
-        <Route path="/tickets" element={<TicketsPage />} />
-        <Route path="/notifications" element={<NotificationsPage />} />
         <Route path="/users" element={<ProtectedRoute allowedRoles={["ADMIN"]}><UsersPage /></ProtectedRoute>} />
         <Route path="/profile" element={<ProfilePage />} />
       </Route>

@@ -1,5 +1,4 @@
 ﻿import {
-  ArrowDown,
   ArrowRight,
   BellRing,
   BookOpenCheck,
@@ -7,8 +6,6 @@
   CheckCircle2,
   Clock3,
   LayoutDashboard,
-  ShieldCheck,
-  Sparkles,
   Wrench,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -71,32 +68,23 @@ function LandingPage() {
       <section className="relative mx-auto flex min-h-[88vh] w-full max-w-6xl items-center px-4">
         <div className="grid w-full gap-10 lg:grid-cols-[1.15fr_0.85fr]">
           <div className="animate-reveal space-y-6">
-            <p className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/12 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-sky-100">
-              <Sparkles className="h-3.5 w-3.5" />
-              Smart Campus Operations Hub
-            </p>
-
-            <h1 className="max-w-3xl text-4xl font-bold leading-tight text-white md:text-6xl">
+            <h1 className="max-w-3xl text-4xl font-bold leading-tight text-slate-900 md:text-6xl dark:text-white">
               One platform for smarter campus coordination.
             </h1>
 
-            <p className="max-w-2xl text-lg leading-relaxed text-blue-100/90 md:text-xl">
+            <p className="max-w-2xl text-lg leading-relaxed text-slate-700 md:text-xl dark:text-blue-100/90">
               Track resources, handle bookings, and empower teams with real-time operational control.
             </p>
 
             <div className="flex flex-wrap gap-3">
-              <Button
-                size="lg"
-                className="animate-glow"
-                onClick={() => (window.location.href = getGoogleLoginUrl())}
-              >
+              <Button size="lg" className="animate-glow" onClick={() => (window.location.href = getGoogleLoginUrl())}>
                 <GoogleLogo className="h-4 w-4" />
                 Sign in with Google
               </Button>
               <Button
                 size="lg"
                 variant="secondary"
-                className="border-white/45 bg-white/90 text-[color:var(--brand)] hover:bg-white"
+                className="border-slate-300 bg-white text-[color:var(--text)] hover:bg-slate-100 dark:border-white/45 dark:bg-white/90 dark:text-[color:var(--brand)] dark:hover:bg-white"
                 onClick={() => navigate("/dashboard")}
               >
                 Explore Dashboard
@@ -108,64 +96,59 @@ function LandingPage() {
               {keyMetrics.map((item, index) => (
                 <article
                   key={item.label}
-                  className="surface-card animate-reveal rounded-2xl border border-white/20 bg-white/10 p-4 backdrop-blur-md"
+                  className="animate-reveal rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_14px_30px_rgba(15,23,42,0.08)] dark:border-white/20 dark:bg-white/10 dark:shadow-none"
                   style={{ animationDelay: `${120 + index * 90}ms` }}
                 >
-                  <p className="text-2xl font-bold text-white">{item.value}</p>
-                  <p className="mt-1 text-xs uppercase tracking-[0.15em] text-blue-100/80">{item.label}</p>
+                  <p className="text-2xl font-bold text-slate-900 dark:text-white">{item.value}</p>
+                  <p className="mt-1 text-xs uppercase tracking-[0.15em] text-slate-500 dark:text-blue-100/80">{item.label}</p>
                 </article>
               ))}
             </div>
           </div>
 
           <div className="self-end lg:self-center">
-            <div className="surface-card animate-float rounded-3xl border border-white/25 bg-white/10 p-5 backdrop-blur-xl">
-              <h3 className="text-lg font-bold text-white">Today in Campus Pulse</h3>
+            <div className="animate-float rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_18px_34px_rgba(15,23,42,0.12)] dark:border-white/25 dark:bg-white/10 dark:backdrop-blur-xl dark:shadow-none">
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white">Today in Campus Pulse</h3>
               <div className="mt-4 grid gap-3">
                 {[
                   "24 bookings approved across faculty zones",
                   "7 active maintenance tickets under review",
                   "95% resource readiness for tomorrow",
                 ].map((item, index) => (
-                  <div key={item} className="rounded-xl border border-white/20 bg-white/10 p-3 text-sm text-blue-50/95">
-                    <span className="font-semibold text-cyan-200">0{index + 1}.</span> {item}
+                  <div
+                    key={item}
+                    className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700 dark:border-white/20 dark:bg-white/10 dark:text-blue-50/95"
+                  >
+                    <span className="font-semibold text-cyan-600 dark:text-cyan-200">0{index + 1}.</span> {item}
                   </div>
                 ))}
               </div>
             </div>
           </div>
         </div>
-
-        <a
-          href="#features"
-          className="group absolute bottom-8 left-1/2 inline-flex -translate-x-1/2 items-center gap-2 rounded-full border border-white/25 bg-white/10 px-4 py-2 text-sm font-semibold text-white/90 backdrop-blur transition hover:bg-white/20"
-        >
-          Scroll Down
-          <ArrowDown className="h-4 w-4 transition group-hover:translate-y-0.5" />
-        </a>
       </section>
 
       <section id="features" className="scroll-mt-28 px-4 py-16">
         <div className="mx-auto max-w-6xl">
           <div className="mb-8 max-w-2xl animate-reveal">
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-cyan-200">Platform Features</p>
-            <h2 className="mt-3 text-3xl font-bold text-white md:text-4xl">Modern tools for every operations team.</h2>
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-cyan-700 dark:text-cyan-200">Platform Features</p>
+            <h2 className="mt-3 text-3xl font-bold text-slate-900 md:text-4xl dark:text-white">Modern tools for every operations team.</h2>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
             {featureCards.map((card, index) => (
               <article
                 key={card.title}
-                className="surface-card animate-reveal rounded-2xl border border-white/15 bg-white/10 p-5 backdrop-blur-md transition hover:-translate-y-1 hover:border-cyan-200/45"
+                className="surface-card animate-reveal rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_10px_24px_rgba(15,23,42,0.08)] transition hover:-translate-y-1 hover:border-cyan-300 dark:border-white/15 dark:bg-white/10 dark:backdrop-blur-md dark:shadow-none dark:hover:border-cyan-200/45"
                 style={{ animationDelay: `${index * 70}ms` }}
               >
                 <div className="flex items-start gap-3">
-                  <span className="rounded-xl bg-cyan-300/18 p-2 text-cyan-100">
+                  <span className="rounded-xl bg-cyan-100 p-2 text-cyan-700 dark:bg-cyan-300/18 dark:text-cyan-100">
                     <card.icon className="h-5 w-5" />
                   </span>
                   <div>
-                    <h3 className="font-bold text-white">{card.title}</h3>
-                    <p className="mt-1 text-sm text-blue-100/85">{card.description}</p>
+                    <h3 className="font-bold text-slate-900 dark:text-white">{card.title}</h3>
+                    <p className="mt-1 text-sm text-slate-600 dark:text-blue-100/85">{card.description}</p>
                   </div>
                 </div>
               </article>
@@ -175,22 +158,22 @@ function LandingPage() {
       </section>
 
       <section id="workflow" className="scroll-mt-28 px-4 py-16">
-        <div className="mx-auto max-w-6xl rounded-3xl border border-white/15 bg-white/10 p-6 backdrop-blur-md md:p-8">
+        <div className="mx-auto max-w-6xl rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_16px_34px_rgba(15,23,42,0.08)] dark:border-white/15 dark:bg-white/10 dark:backdrop-blur-md dark:shadow-none md:p-8">
           <div className="mb-8 animate-reveal">
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-cyan-200">Workflow</p>
-            <h2 className="mt-3 text-3xl font-bold text-white md:text-4xl">From request to resolution, everything stays synchronized.</h2>
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-cyan-700 dark:text-cyan-200">Workflow</p>
+            <h2 className="mt-3 text-3xl font-bold text-slate-900 md:text-4xl dark:text-white">From request to resolution, everything stays synchronized.</h2>
           </div>
 
           <div className="grid gap-4 md:grid-cols-3">
             {workflow.map((item, index) => (
               <article
                 key={item.title}
-                className="animate-reveal rounded-2xl border border-white/20 bg-[color:var(--navy-mid)]/55 p-5"
+                className="animate-reveal rounded-2xl border border-slate-200 bg-slate-50 p-5 dark:border-white/20 dark:bg-[color:var(--navy-mid)]/55"
                 style={{ animationDelay: `${index * 80}ms` }}
               >
-                <item.icon className="h-6 w-6 text-cyan-200" />
-                <h3 className="mt-4 text-lg font-bold text-white">{item.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-blue-100/85">{item.description}</p>
+                <item.icon className="h-6 w-6 text-cyan-700 dark:text-cyan-200" />
+                <h3 className="mt-4 text-lg font-bold text-slate-900 dark:text-white">{item.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-blue-100/85">{item.description}</p>
               </article>
             ))}
           </div>
@@ -198,17 +181,17 @@ function LandingPage() {
       </section>
 
       <section className="px-4 pb-8 pt-16">
-        <div className="mx-auto max-w-6xl animate-reveal rounded-3xl border border-cyan-200/35 bg-gradient-to-r from-[color:var(--navy-mid)] to-[color:var(--navy-deep)] p-7 shadow-2xl md:flex md:items-center md:justify-between">
+        <div className="mx-auto max-w-6xl animate-reveal rounded-3xl border border-slate-200 bg-gradient-to-r from-slate-100 to-blue-100 p-7 shadow-[0_16px_34px_rgba(15,23,42,0.08)] dark:border-cyan-200/35 dark:bg-gradient-to-r dark:from-[color:var(--navy-mid)] dark:to-[color:var(--navy-deep)] dark:shadow-2xl md:flex md:items-center md:justify-between">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-cyan-100">Ready to launch</p>
-            <h2 className="mt-2 text-2xl font-bold text-white md:text-3xl">Bring your campus operations into one intelligent control center.</h2>
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-cyan-700 dark:text-cyan-100">Ready to launch</p>
+            <h2 className="mt-2 text-2xl font-bold text-slate-900 dark:text-white md:text-3xl">Bring your campus operations into one intelligent control center.</h2>
           </div>
 
           <div className="mt-5 md:mt-0">
             <Button
               size="lg"
               variant="secondary"
-              className="border-white/40 bg-white text-[color:var(--brand)] hover:bg-slate-100"
+              className="border-slate-300 bg-white text-[color:var(--text)] hover:bg-slate-100 dark:border-white/40 dark:bg-white dark:text-[color:var(--brand)]"
               onClick={() => (window.location.href = getGoogleLoginUrl())}
             >
               <GoogleLogo className="h-4 w-4" />
@@ -222,4 +205,3 @@ function LandingPage() {
 }
 
 export default LandingPage;
-

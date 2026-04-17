@@ -38,8 +38,11 @@ public class BookingController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public BookingResponseDTO createBooking(@Valid @RequestBody BookingRequestDTO requestDTO) {
-        return bookingService.createBooking(requestDTO);
+    public BookingResponseDTO createBooking(
+            @AuthenticationPrincipal OidcUser oidcUser,
+            @Valid @RequestBody BookingRequestDTO requestDTO
+    ) {
+        return bookingService.createBooking(oidcUser, requestDTO);
     }
 
     @PatchMapping("/{id}/status")

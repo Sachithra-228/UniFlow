@@ -34,6 +34,7 @@ function BookingsPage() {
   const [bookings, setBookings] = useState([]);
   const [users, setUsers] = useState([]);
   const [resources, setResources] = useState([]);
+  const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [query, setQuery] = useState("");
@@ -70,10 +71,23 @@ function BookingsPage() {
           fetchProfile(),
         ]);
 
+        const resolvedRole = normalizeRole(profileData?.data?.role) ?? "STUDENT";
+        const profileUser = profileData?.data ?? null;
+
         setBookings(bookingsData.items);
-        setUsers(usersData.items);
         setResources(resourcesData.items);
-        setRole(normalizeRole(profileData?.data?.role) ?? "STUDENT");
+        setRole(resolvedRole);
+        setCurrentUser(profileUser);
+        setUsers(
+          resolvedRole === "ADMIN" || resolvedRole === "STAFF"
+            ? usersData.items
+            : profileUser
+              ? [{ id: profileUser.id, name: profileUser.name, email: profileUser.email }]
+              : []
+        );
+        if (resolvedRole !== "ADMIN" && resolvedRole !== "STAFF" && profileUser?.id) {
+          setForm((current) => ({ ...current, userId: String(profileUser.id) }));
+        }
       } catch {
         addToast({
           type: "error",
@@ -129,7 +143,11 @@ function BookingsPage() {
 
   async function handleCreateBooking(event) {
     event.preventDefault();
-    if (!form.userId || !form.resourceId || !form.startTime || !form.endTime || !form.purpose.trim()) {
+    const resolvedUserId = canModerateBookings
+      ? Number(form.userId)
+      : Number(currentUser?.id);
+
+    if (!resolvedUserId || !form.resourceId || !form.startTime || !form.endTime || !form.purpose.trim()) {
       addToast({ type: "error", title: "Validation error", message: "Complete all fields before submitting." });
       return;
     }
@@ -138,13 +156,17 @@ function BookingsPage() {
     try {
       const payload = {
         ...form,
-        userId: Number(form.userId),
+        userId: resolvedUserId,
         resourceId: Number(form.resourceId),
       };
 
       const response = await createBooking(payload);
       setBookings((current) => [response.data, ...current]);
-      setForm(initialForm);
+      setForm(
+        canModerateBookings
+          ? initialForm
+          : { ...initialForm, userId: currentUser?.id ? String(currentUser.id) : "" }
+      );
       setOpenModal(false);
       addToast({
         type: "success",
@@ -289,21 +311,31 @@ function BookingsPage() {
         }
       >
         <form id="booking-form" className="grid gap-4 lg:grid-cols-2" onSubmit={handleCreateBooking}>
-          <FormField label="User">
-            <select
-              name="userId"
-              value={form.userId}
-              onChange={handleInput}
-              className="w-full rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 pr-10 text-sm outline-none dark:bg-[color:var(--bg-soft)]/70"
-            >
-              <option value="">Select user</option>
-              {users.map((user) => (
-                <option key={user.id} value={user.id}>
-                  {user.name} ({user.email})
-                </option>
-              ))}
-            </select>
-          </FormField>
+          {canModerateBookings ? (
+            <FormField label="User">
+              <select
+                name="userId"
+                value={form.userId}
+                onChange={handleInput}
+                className="w-full rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 pr-10 text-sm outline-none dark:bg-[color:var(--bg-soft)]/70"
+              >
+                <option value="">Select user</option>
+                {users.map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {user.name} ({user.email})
+                  </option>
+                ))}
+              </select>
+            </FormField>
+          ) : (
+            <FormField label="User">
+              <input
+                value={currentUser ? `${currentUser.name} (${currentUser.email})` : "Loading profile..."}
+                readOnly
+                className="w-full rounded-xl border border-[color:var(--border)] bg-white/60 px-3 py-2 text-sm outline-none dark:bg-[color:var(--bg-soft)]/60"
+              />
+            </FormField>
+          )}
 
           <FormField label="Resource">
             <select

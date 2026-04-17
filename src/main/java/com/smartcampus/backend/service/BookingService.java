@@ -42,11 +42,18 @@ public class BookingService {
     }
 
     @Transactional
-    public BookingResponseDTO createBooking(BookingRequestDTO requestDTO) {
+    public BookingResponseDTO createBooking(OidcUser oidcUser, BookingRequestDTO requestDTO) {
         validateBookingWindow(requestDTO.getStartTime(), requestDTO.getEndTime());
 
-        User user = userRepository.findById(requestDTO.getUserId())
-                .orElseThrow(() -> new ResourceNotFoundException("User", requestDTO.getUserId()));
+        User actor = currentUserService.requireCurrentUser(oidcUser);
+        UserRole actorRole = currentUserService.roleOf(actor);
+
+        Long targetUserId = (actorRole == UserRole.ADMIN || actorRole == UserRole.STAFF)
+                ? requestDTO.getUserId()
+                : actor.getId();
+
+        User user = userRepository.findById(targetUserId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", targetUserId));
 
         Resource resource = resourceRepository.findById(requestDTO.getResourceId())
                 .orElseThrow(() -> new ResourceNotFoundException("Resource", requestDTO.getResourceId()));

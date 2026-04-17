@@ -43,6 +43,9 @@ public class Ticket {
     @Column(name = "location_reference")
     private String locationReference;
 
+    @Column(name = "location")
+    private String legacyLocation;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private TicketCategory category;
@@ -56,6 +59,9 @@ public class Ticket {
 
     @Column(name = "preferred_contact_details", nullable = false, length = 300)
     private String preferredContactDetails;
+
+    @Column(name = "preferred_contact", nullable = false, length = 300)
+    private String legacyPreferredContact;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -91,6 +97,7 @@ public class Ticket {
 
     @PrePersist
     public void onCreate() {
+        syncLegacyColumns();
         LocalDateTime now = LocalDateTime.now();
         if (createdAt == null) {
             createdAt = now;
@@ -102,7 +109,23 @@ public class Ticket {
 
     @PreUpdate
     public void onUpdate() {
+        syncLegacyColumns();
         updatedAt = LocalDateTime.now();
     }
-}
 
+    private void syncLegacyColumns() {
+        if (locationReference == null || locationReference.isBlank()) {
+            locationReference = legacyLocation;
+        }
+        if (legacyLocation == null || legacyLocation.isBlank()) {
+            legacyLocation = locationReference;
+        }
+
+        if (preferredContactDetails == null || preferredContactDetails.isBlank()) {
+            preferredContactDetails = legacyPreferredContact;
+        }
+        if (legacyPreferredContact == null || legacyPreferredContact.isBlank()) {
+            legacyPreferredContact = preferredContactDetails;
+        }
+    }
+}

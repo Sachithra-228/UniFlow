@@ -60,14 +60,23 @@ public class TicketService {
             resource = resourceRepository.findById(requestDTO.getResourceId())
                     .orElseThrow(() -> new ResourceNotFoundException("Resource", requestDTO.getResourceId()));
         }
+        String normalizedLocation = normalizeOptional(requestDTO.getLocationReference());
+        if (normalizedLocation == null && resource != null) {
+            normalizedLocation = normalizeOptional(resource.getLocation());
+        }
+        if (normalizedLocation == null) {
+            throw new IllegalArgumentException("Location is required when selected resource has no location.");
+        }
 
         Ticket ticket = Ticket.builder()
                 .resource(resource)
-                .locationReference(normalizeOptional(requestDTO.getLocationReference()))
+                .locationReference(normalizedLocation)
+                .legacyLocation(normalizedLocation)
                 .category(requestDTO.getCategory())
                 .description(requestDTO.getDescription().trim())
                 .priority(requestDTO.getPriority())
                 .preferredContactDetails(requestDTO.getPreferredContactDetails().trim())
+                .legacyPreferredContact(requestDTO.getPreferredContactDetails().trim())
                 .status(TicketStatus.OPEN)
                 .createdBy(actor)
                 .createdAt(LocalDateTime.now())
@@ -351,15 +360,24 @@ public class TicketService {
                 .map(this::toCommentResponse)
                 .toList();
 
+        String resolvedLocation = normalizeOptional(ticket.getLocationReference());
+        if (resolvedLocation == null) {
+            resolvedLocation = normalizeOptional(ticket.getLegacyLocation());
+        }
+        String resolvedPreferredContact = normalizeOptional(ticket.getPreferredContactDetails());
+        if (resolvedPreferredContact == null) {
+            resolvedPreferredContact = normalizeOptional(ticket.getLegacyPreferredContact());
+        }
+
         return TicketResponseDTO.builder()
                 .id(ticket.getId())
                 .resourceId(ticket.getResource() == null ? null : ticket.getResource().getId())
                 .resourceName(ticket.getResource() == null ? null : ticket.getResource().getName())
-                .locationReference(ticket.getLocationReference())
+                .locationReference(resolvedLocation)
                 .category(ticket.getCategory())
                 .description(ticket.getDescription())
                 .priority(ticket.getPriority())
-                .preferredContactDetails(ticket.getPreferredContactDetails())
+                .preferredContactDetails(resolvedPreferredContact)
                 .status(ticket.getStatus())
                 .rejectionReason(ticket.getRejectionReason())
                 .assignedTechnicianId(ticket.getAssignedTechnician() == null ? null : ticket.getAssignedTechnician().getId())

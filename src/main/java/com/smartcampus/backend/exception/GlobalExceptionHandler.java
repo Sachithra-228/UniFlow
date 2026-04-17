@@ -5,6 +5,7 @@ import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -46,6 +47,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler({ConstraintViolationException.class, IllegalArgumentException.class, HttpMessageNotReadableException.class})
     public ResponseEntity<ApiError> handleBadRequest(Exception ex, HttpServletRequest request) {
         return buildError(HttpStatus.BAD_REQUEST, ex.getMessage(), request.getRequestURI(), null);
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ApiError> handleAccessDenied(AccessDeniedException ex, HttpServletRequest request) {
+        return buildError(HttpStatus.FORBIDDEN, ex.getMessage(), request.getRequestURI(), null);
     }
 
     @ExceptionHandler({NoHandlerFoundException.class, NoResourceFoundException.class})

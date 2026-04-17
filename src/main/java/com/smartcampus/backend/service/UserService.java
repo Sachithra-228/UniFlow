@@ -1,14 +1,17 @@
 package com.smartcampus.backend.service;
 
 import com.smartcampus.backend.dto.UserResponseDTO;
+import com.smartcampus.backend.entity.AccountStatus;
 import com.smartcampus.backend.entity.User;
 import com.smartcampus.backend.exception.ResourceNotFoundException;
 import com.smartcampus.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 
@@ -17,6 +20,7 @@ import java.time.LocalDateTime;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final AccountLinkRequestService accountLinkRequestService;
 
     public Page<UserResponseDTO> getAllUsers(Pageable pageable) {
         return userRepository.findAll(pageable).map(this::toUserResponse);
@@ -28,28 +32,46 @@ public class UserService {
         return toUserResponse(user);
     }
 
-    public User saveOrUpdateGoogleUser(OidcUser oidcUser) {
-        String email = oidcUser.getEmail();
-        String name = oidcUser.getFullName();
-        String providerId = oidcUser.getSubject();
+    @Transactional
+    public User resolveGoogleUser(OidcUser oidcUser) {
+        String googleEmail = normalizeGoogleEmail(oidcUser);
+        String displayName = oidcUser.getFullName();
+        String googleSubject = oidcUser.getSubject();
 
-        return userRepository.findByEmail(email)
-                .map(existingUser -> {
-                    existingUser.setName(name);
-                    existingUser.setProvider("google");
-                    existingUser.setProviderId(providerId);
-                    return userRepository.save(existingUser);
-                })
-                .orElseGet(() -> userRepository.save(
-                        User.builder()
-                                .email(email)
-                                .name(name)
-                                .role("USER")
-                                .provider("google")
-                                .providerId(providerId)
-                                .createdAt(LocalDateTime.now())
-                                .build()
-                ));
+        User officialEmailMatch = userRepository.findByEmailIgnoreCase(googleEmail).orElse(null);
+        if (officialEmailMatch != null) {
+            applyGoogleLink(officialEmailMatch, googleEmail, googleSubject, displayName);
+            return userRepository.save(officialEmailMatch);
+        }
+
+        User approvedLinkedMatch = userRepository.findByGoogleEmailIgnoreCase(googleEmail).orElse(null);
+        if (approvedLinkedMatch != null) {
+            applyGoogleLink(approvedLinkedMatch, googleEmail, googleSubject, displayName);
+            return userRepository.save(approvedLinkedMatch);
+        }
+
+        accountLinkRequestService.createPendingRequest(googleEmail, displayName, googleSubject);
+        throw new AccessDeniedException("Google account is not linked to an invited identity yet");
+    }
+
+    private void applyGoogleLink(User user, String googleEmail, String googleSubject, String displayName) {
+        if (displayName != null && !displayName.isBlank()) {
+            user.setName(displayName);
+        }
+
+        user.setProvider("google");
+        user.setProviderId(googleSubject);
+
+        if (user.getGoogleEmail() == null || user.getGoogleEmail().isBlank()) {
+            user.setGoogleEmail(googleEmail);
+        }
+
+        if (user.getAccountStatus() == null || user.getAccountStatus() == AccountStatus.INVITED) {
+            user.setAccountStatus(AccountStatus.ACTIVE);
+            user.setActivatedAt(LocalDateTime.now());
+            user.setInviteTokenHash(null);
+            user.setInviteTokenExpiresAt(null);
+        }
     }
 
     private UserResponseDTO toUserResponse(User user) {
@@ -61,6 +83,16 @@ public class UserService {
                 .createdAt(user.getCreatedAt())
                 .providerId(user.getProviderId())
                 .provider(user.getProvider())
+                .googleEmail(user.getGoogleEmail())
+                .accountStatus(user.getAccountStatus())
+                .activatedAt(user.getActivatedAt())
                 .build();
+    }
+
+    private String normalizeGoogleEmail(OidcUser oidcUser) {
+        if (oidcUser == null || oidcUser.getEmail() == null || oidcUser.getEmail().isBlank()) {
+            throw new AccessDeniedException("Google profile did not contain a valid email");
+        }
+        return oidcUser.getEmail().trim().toLowerCase();
     }
 }

@@ -1,11 +1,21 @@
 export const RESOURCE_TYPES = ["ROOM", "LAB", "EQUIPMENT"];
 export const RESOURCE_STATUSES = ["AVAILABLE", "IN_USE", "MAINTENANCE", "INACTIVE"];
 export const BOOKING_STATUSES = ["PENDING", "APPROVED", "REJECTED", "CANCELLED"];
+export const TICKET_CATEGORIES = ["HARDWARE", "SOFTWARE", "NETWORK", "FACILITY", "OTHER"];
+export const TICKET_PRIORITIES = ["LOW", "MEDIUM", "HIGH", "CRITICAL"];
+export const TICKET_STATUSES = ["OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED", "REJECTED"];
 
 export const PAGE_TITLES = {
   "/dashboard": "Campus Command Center",
+  "/student/dashboard": "Student Operations Hub",
+  "/staff/dashboard": "Staff Operations Hub",
+  "/technician/dashboard": "Technician Operations Hub",
+  "/admin/dashboard": "Admin Operations Hub",
   "/resources": "Resource Atlas",
   "/bookings": "Booking Intelligence",
+  "/tickets": "Ticket Operations",
+  "/notifications": "Notifications Center",
+  "/admin/link-requests": "Account Link Requests",
   "/users": "Campus People Directory",
   "/profile": "Identity & Access Profile",
 };

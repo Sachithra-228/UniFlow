@@ -114,3 +114,75 @@ export async function fetchProfile() {
 export function getGoogleLoginUrl() {
   return `${API_BASE_URL}/oauth2/authorization/google`;
 }
+
+export async function fetchAdminLinkRequests(status) {
+  const params = status ? { status } : {};
+  const response = await api.get("/api/admin/link-requests", { params });
+  const items = Array.isArray(response.data) ? response.data : [];
+  return { items };
+}
+
+export async function approveAdminLinkRequest(id, payload) {
+  const response = await api.post(`/api/admin/link-requests/${id}/approve`, payload);
+  return { data: response.data };
+}
+
+export async function rejectAdminLinkRequest(id, payload) {
+  const response = await api.post(`/api/admin/link-requests/${id}/reject`, payload);
+  return { data: response.data };
+}
+
+export async function fetchMyTickets(params = { page: 0, size: 20 }) {
+  const response = await api.get("/api/tickets/my", { params });
+  return { ...fromPagePayload(response.data, params.size), isFallback: false };
+}
+
+export async function fetchAssignedTickets(params = { page: 0, size: 20 }) {
+  const response = await api.get("/api/tickets/assigned", { params });
+  return { ...fromPagePayload(response.data, params.size), isFallback: false };
+}
+
+export async function fetchAdminTickets(params = { page: 0, size: 20 }, status) {
+  const query = { ...params };
+  if (status) query.status = status;
+  const response = await api.get("/api/admin/tickets", { params: query });
+  return { ...fromPagePayload(response.data, params.size), isFallback: false };
+}
+
+export async function createTicket(formData) {
+  const response = await api.post("/api/tickets", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
+  return { data: response.data };
+}
+
+export async function assignTicket(ticketId, payload) {
+  const response = await api.patch(`/api/admin/tickets/${ticketId}/assign`, payload);
+  return { data: response.data };
+}
+
+export async function updateTicketStatus(ticketId, payload) {
+  const response = await api.patch(`/api/tickets/${ticketId}/status`, payload);
+  return { data: response.data };
+}
+
+export async function addTicketResolutionNotes(ticketId, payload) {
+  const response = await api.patch(`/api/tickets/${ticketId}/resolution`, payload);
+  return { data: response.data };
+}
+
+export async function addTicketComment(ticketId, payload) {
+  const response = await api.post(`/api/tickets/${ticketId}/comments`, payload);
+  return { data: response.data };
+}
+
+export async function updateTicketComment(ticketId, commentId, payload) {
+  const response = await api.put(`/api/tickets/${ticketId}/comments/${commentId}`, payload);
+  return { data: response.data };
+}
+
+export async function deleteTicketComment(ticketId, commentId) {
+  await api.delete(`/api/tickets/${ticketId}/comments/${commentId}`);
+}

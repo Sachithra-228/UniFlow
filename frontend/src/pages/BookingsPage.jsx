@@ -1,6 +1,7 @@
 import axios from "axios";
 import { Plus, Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { createBooking, fetchBookings, fetchResources, fetchUsers } from "../api/campusApi";
 import Badge from "../components/common/Badge";
 import Button from "../components/common/Button";
@@ -21,6 +22,7 @@ const initialForm = {
 };
 
 function BookingsPage() {
+  const [searchParams] = useSearchParams();
   const [bookings, setBookings] = useState([]);
   const [users, setUsers] = useState([]);
   const [resources, setResources] = useState([]);
@@ -31,6 +33,21 @@ function BookingsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState(initialForm);
   const { addToast } = useToast();
+
+  useEffect(() => {
+    const statusFromQuery = searchParams.get("status");
+    const normalizedStatus = statusFromQuery ? statusFromQuery.toUpperCase() : "";
+    const isKnownStatus = BOOKING_STATUSES.includes(normalizedStatus);
+
+    if (isKnownStatus) {
+      setStatusFilter(normalizedStatus);
+      return;
+    }
+
+    if (statusFromQuery === null) {
+      setStatusFilter("ALL");
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     async function loadData() {

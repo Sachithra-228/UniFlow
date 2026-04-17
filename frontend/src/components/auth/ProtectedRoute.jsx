@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { fetchProfile } from "../../api/campusApi";
+import { normalizeRole } from "../../utils/roles";
 
 function ProtectedRoute({ children, allowedRoles }) {
   const [status, setStatus] = useState("loading");
@@ -12,11 +13,11 @@ function ProtectedRoute({ children, allowedRoles }) {
     async function validateAccess() {
       try {
         const response = await fetchProfile();
-        const role = response?.data?.role;
+        const role = normalizeRole(response?.data?.role);
         const roleAllowed =
           !Array.isArray(allowedRoles) ||
           allowedRoles.length === 0 ||
-          (typeof role === "string" && allowedRoles.includes(role.toUpperCase()));
+          (typeof role === "string" && allowedRoles.includes(role));
 
         if (mounted) {
           setStatus(roleAllowed ? "allowed" : "forbidden");
@@ -30,7 +31,12 @@ function ProtectedRoute({ children, allowedRoles }) {
         }
 
         // Keep app usable when backend is temporarily unreachable.
-        setStatus("allowed");
+        if (!Array.isArray(allowedRoles) || allowedRoles.length === 0) {
+          setStatus("allowed");
+          return;
+        }
+
+        setStatus("forbidden");
       }
     }
 

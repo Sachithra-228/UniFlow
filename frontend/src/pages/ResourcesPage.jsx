@@ -1,6 +1,6 @@
-import { Filter, Plus, Search } from "lucide-react";
+import { Filter, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { createResource, fetchResources } from "../api/campusApi";
+import { createResource, deleteResource, fetchResources, updateResource } from "../api/campusApi";
 import Badge from "../components/common/Badge";
 import Button from "../components/common/Button";
 import Card from "../components/common/Card";
@@ -28,6 +28,11 @@ function ResourcesPage() {
   const [openModal, setOpenModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState(initialForm);
+  const [resourceModalMode, setResourceModalMode] = useState("create");
+  const [editingResourceId, setEditingResourceId] = useState(null);
+  const [openDeleteModal, setOpenDeleteModal] = useState(false);
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
   const [viewMode, setViewMode] = useState("table");
   const { addToast } = useToast();
 
@@ -68,7 +73,32 @@ function ResourcesPage() {
     setForm((current) => ({ ...current, [name]: value }));
   }
 
-  async function handleCreateResource(event) {
+  function openCreateModal() {
+    setResourceModalMode("create");
+    setEditingResourceId(null);
+    setForm(initialForm);
+    setOpenModal(true);
+  }
+
+  function openEditModalForResource(resource) {
+    setResourceModalMode("edit");
+    setEditingResourceId(resource.id);
+    setForm({
+      name: resource.name ?? "",
+      type: resource.type ?? "ROOM",
+      capacity: String(resource.capacity ?? ""),
+      location: resource.location ?? "",
+      status: resource.status ?? "AVAILABLE",
+    });
+    setOpenModal(true);
+  }
+
+  function openDeleteModalForResource(resource) {
+    setDeleteTarget(resource);
+    setOpenDeleteModal(true);
+  }
+
+  async function handleSaveResource(event) {
     event.preventDefault();
     if (!form.name.trim() || !form.location.trim()) {
       addToast({ type: "error", title: "Validation error", message: "Name and location are required." });
@@ -86,24 +116,62 @@ function ResourcesPage() {
         ...form,
         capacity: Number(form.capacity),
       };
-      const response = await createResource(payload);
-      setResources((current) => [response.data, ...current]);
+
+      if (resourceModalMode === "edit" && editingResourceId) {
+        const response = await updateResource(editingResourceId, payload);
+        setResources((current) => current.map((item) => (item.id === editingResourceId ? response.data : item)));
+        addToast({
+          type: "success",
+          title: "Resource updated",
+          message: "Resource details were updated successfully.",
+        });
+      } else {
+        const response = await createResource(payload);
+        setResources((current) => [response.data, ...current]);
+        addToast({
+          type: "success",
+          title: "Resource created",
+          message: response.isFallback ? "Saved in mock fallback data." : "Resource is now available in inventory.",
+        });
+      }
+
       setOpenModal(false);
       setForm(initialForm);
-
-      addToast({
-        type: "success",
-        title: "Resource created",
-        message: response.isFallback ? "Saved in mock fallback data." : "Resource is now available in inventory.",
-      });
+      setEditingResourceId(null);
+      setResourceModalMode("create");
     } catch (error) {
       addToast({
         type: "error",
-        title: "Create failed",
-        message: error?.response?.data?.message || "Unable to create resource.",
+        title: resourceModalMode === "edit" ? "Update failed" : "Create failed",
+        message: error?.response?.data?.message || `Unable to ${resourceModalMode === "edit" ? "update" : "create"} resource.`,
       });
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function handleDeleteResource() {
+    if (!deleteTarget?.id) return;
+
+    setDeleteSubmitting(true);
+    try {
+      await deleteResource(deleteTarget.id);
+      setResources((current) => current.filter((resource) => resource.id !== deleteTarget.id));
+      addToast({
+        type: "success",
+        title: "Resource deleted",
+        message: `${deleteTarget.name} was removed.`,
+      });
+      setOpenDeleteModal(false);
+      setDeleteTarget(null);
+    } catch (error) {
+      addToast({
+        type: "error",
+        title: "Delete failed",
+        message: error?.response?.data?.message || "Could not delete resource.",
+      });
+    } finally {
+      setDeleteSubmitting(false);
     }
   }
 
@@ -154,7 +222,7 @@ function ResourcesPage() {
               <Filter className="h-4 w-4" />
               {viewMode === "table" ? "Card View" : "Table View"}
             </Button>
-            <Button onClick={() => setOpenModal(true)}>
+            <Button onClick={openCreateModal}>
               <Plus className="h-4 w-4" />
               Add Resource
             </Button>
@@ -174,35 +242,43 @@ function ResourcesPage() {
             title="No resources found"
             description="Try changing filters or add new campus resources to populate this view."
             action={
-              <Button onClick={() => setOpenModal(true)}>
+              <Button onClick={openCreateModal}>
                 <Plus className="h-4 w-4" />
                 Create Resource
               </Button>
             }
           />
         ) : viewMode === "table" ? (
-          <ResourceTable resources={filteredResources} />
+          <ResourceTable
+            resources={filteredResources}
+            onEdit={openEditModalForResource}
+            onDelete={openDeleteModalForResource}
+          />
         ) : (
-          <ResourceCards resources={filteredResources} />
+          <ResourceCards
+            resources={filteredResources}
+            onEdit={openEditModalForResource}
+            onDelete={openDeleteModalForResource}
+          />
         )}
       </Card>
 
       <Modal
         isOpen={openModal}
         onClose={() => setOpenModal(false)}
-        title="Add Campus Resource"
+        title={resourceModalMode === "edit" ? "Update Campus Resource" : "Add Campus Resource"}
         footer={
           <div className="flex justify-end gap-2">
             <Button variant="secondary" onClick={() => setOpenModal(false)}>
               Cancel
             </Button>
             <Button form="resource-form" type="submit" loading={submitting}>
-              Save Resource
+              {resourceModalMode === "edit" ? "Save Changes" : "Save Resource"}
             </Button>
           </div>
         }
       >
-        <form id="resource-form" className="grid gap-4 md:grid-cols-2" onSubmit={handleCreateResource}>
+        <form id="resource-form" className="grid gap-4 md:grid-cols-2" onSubmit={handleSaveResource}>
           <FormField label="Resource Name">
             <input
               name="name"
@@ -265,11 +341,31 @@ function ResourcesPage() {
           </FormField>
         </form>
       </Modal>
+
+      <Modal
+        isOpen={openDeleteModal}
+        onClose={() => setOpenDeleteModal(false)}
+        title="Delete Resource"
+        footer={(
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" onClick={() => setOpenDeleteModal(false)}>
+              Cancel
+            </Button>
+            <Button variant="danger" onClick={handleDeleteResource} loading={deleteSubmitting}>
+              Delete Resource
+            </Button>
+          </div>
+        )}
+      >
+        <p className="text-sm text-[color:var(--text-muted)]">
+          Delete resource <span className="font-semibold text-[color:var(--text)]">{deleteTarget?.name}</span>? This action cannot be undone.
+        </p>
+      </Modal>
     </div>
   );
 }
 
-function ResourceTable({ resources }) {
+function ResourceTable({ resources, onEdit, onDelete }) {
   return (
     <div className="fine-scrollbar overflow-x-auto">
       <table className="min-w-full text-left text-sm">
@@ -281,6 +377,7 @@ function ResourceTable({ resources }) {
             <th className="pb-3">Location</th>
             <th className="pb-3">Status</th>
             <th className="pb-3">Created</th>
+            <th className="pb-3">Actions</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-[color:var(--border)]">
@@ -296,6 +393,26 @@ function ResourceTable({ resources }) {
                 <Badge value={item.status} />
               </td>
               <td className="py-3 text-xs text-[color:var(--text-muted)]">{formatDateTime(item.createdAt)}</td>
+              <td className="py-3">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => onEdit(item)}
+                    className="inline-flex items-center gap-1 rounded-lg border border-[color:var(--border)] px-2.5 py-1.5 text-xs font-semibold text-[color:var(--text)] hover:bg-black/5 dark:hover:bg-white/10"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                    Update
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onDelete(item)}
+                    className="inline-flex items-center gap-1 rounded-lg border border-rose-200 px-2.5 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:border-rose-400/40 dark:text-rose-300 dark:hover:bg-rose-400/10"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Delete
+                  </button>
+                </div>
+              </td>
             </tr>
           ))}
         </tbody>
@@ -304,7 +421,7 @@ function ResourceTable({ resources }) {
   );
 }
 
-function ResourceCards({ resources }) {
+function ResourceCards({ resources, onEdit, onDelete }) {
   return (
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
       {resources.map((item) => (
@@ -323,6 +440,25 @@ function ResourceCards({ resources }) {
             <p className="text-[color:var(--text-muted)]">
               Location: <span className="font-semibold text-[color:var(--text)]">{item.location}</span>
             </p>
+          </div>
+
+          <div className="mt-4 flex items-center justify-end gap-2 border-t border-[color:var(--border)] pt-3">
+            <button
+              type="button"
+              onClick={() => onEdit(item)}
+              className="inline-flex items-center gap-1 rounded-lg border border-[color:var(--border)] px-2.5 py-1.5 text-xs font-semibold text-[color:var(--text)] hover:bg-black/5 dark:hover:bg-white/10"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+              Update
+            </button>
+            <button
+              type="button"
+              onClick={() => onDelete(item)}
+              className="inline-flex items-center gap-1 rounded-lg border border-rose-200 px-2.5 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:border-rose-400/40 dark:text-rose-300 dark:hover:bg-rose-400/10"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Delete
+            </button>
           </div>
         </article>
       ))}

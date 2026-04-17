@@ -2,6 +2,7 @@ package com.smartcampus.backend.controller;
 
 import com.smartcampus.backend.dto.ActivationRequestDTO;
 import com.smartcampus.backend.entity.User;
+import com.smartcampus.backend.entity.UserRole;
 import com.smartcampus.backend.service.InviteService;
 import com.smartcampus.backend.service.UserService;
 import jakarta.validation.Valid;
@@ -36,7 +37,7 @@ public class AuthController {
         response.put("id", user.getId());
         response.put("email", user.getEmail());
         response.put("name", user.getName());
-        response.put("role", user.getRole());
+        response.put("role", UserRole.from(user.getRole()).name());
         response.put("provider", user.getProvider());
         response.put("providerId", user.getProviderId());
         return response;

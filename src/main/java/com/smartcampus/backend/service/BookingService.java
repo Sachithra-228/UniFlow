@@ -2,10 +2,12 @@ package com.smartcampus.backend.service;
 
 import com.smartcampus.backend.dto.BookingRequestDTO;
 import com.smartcampus.backend.dto.BookingResponseDTO;
+import com.smartcampus.backend.dto.BookingStatusUpdateRequestDTO;
 import com.smartcampus.backend.entity.Booking;
 import com.smartcampus.backend.entity.BookingStatus;
 import com.smartcampus.backend.entity.Resource;
 import com.smartcampus.backend.entity.User;
+import com.smartcampus.backend.entity.UserRole;
 import com.smartcampus.backend.exception.BookingConflictException;
 import com.smartcampus.backend.exception.ResourceNotFoundException;
 import com.smartcampus.backend.repository.BookingRepository;
@@ -15,6 +17,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,6 +33,8 @@ public class BookingService {
     private final BookingRepository bookingRepository;
     private final UserRepository userRepository;
     private final ResourceRepository resourceRepository;
+    private final CurrentUserService currentUserService;
+    private final NotificationService notificationService;
 
     @Transactional(readOnly = true)
     public Page<BookingResponseDTO> getAllBookings(Pageable pageable) {
@@ -74,6 +80,33 @@ public class BookingService {
             }
             throw ex;
         }
+    }
+
+    @Transactional
+    public BookingResponseDTO updateBookingStatus(
+            OidcUser oidcUser,
+            Long bookingId,
+            BookingStatusUpdateRequestDTO requestDTO
+    ) {
+        User actor = currentUserService.requireCurrentUser(oidcUser);
+        currentUserService.requireAnyRole(actor, UserRole.ADMIN, UserRole.STAFF);
+
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new ResourceNotFoundException("Booking", bookingId));
+
+        BookingStatus targetStatus = requestDTO.getStatus();
+        if (targetStatus == null) {
+            throw new IllegalArgumentException("Booking status is required");
+        }
+        if (targetStatus != BookingStatus.APPROVED && targetStatus != BookingStatus.REJECTED) {
+            throw new AccessDeniedException("Only APPROVED or REJECTED status updates are allowed");
+        }
+
+        BookingStatus previousStatus = booking.getStatus();
+        booking.setStatus(targetStatus);
+        Booking saved = bookingRepository.save(booking);
+        notificationService.notifyBookingStatusUpdated(saved, previousStatus);
+        return toBookingResponse(saved);
     }
 
     private void validateBookingWindow(LocalDateTime startTime, LocalDateTime endTime) {

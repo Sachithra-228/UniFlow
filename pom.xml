@@ -69,6 +69,8 @@
     </dependencies>
 
     <build>
+        <!-- Use an OS temp build directory to avoid IDE file-locking on workspace target/classes (Windows). -->
+        <directory>${java.io.tmpdir}/smart-campus-build</directory>
         <plugins>
             <plugin>
                 <groupId>org.springframework.boot</groupId>

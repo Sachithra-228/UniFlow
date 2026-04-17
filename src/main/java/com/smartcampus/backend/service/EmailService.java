@@ -9,6 +9,8 @@ import org.springframework.stereotype.Service;
 @Service
 @Slf4j
 public class EmailService {
+    // SMTP sender used for invitation and admin notifications.
+    // NOTE: keep this service lightweight; failures are surfaced to invite flows.
 
     private final JavaMailSender mailSender;
 
@@ -17,6 +19,9 @@ public class EmailService {
 
     @Value("${app.admin.notification-email:}")
     private String adminNotificationEmail;
+
+    @Value("${spring.mail.host:}")
+    private String mailHost;
 
     public EmailService(JavaMailSender mailSender) {
         this.mailSender = mailSender;
@@ -49,12 +54,21 @@ public class EmailService {
     }
 
     private void sendEmail(String to, String subject, String text) {
+        if (mailHost == null || mailHost.isBlank()) {
+            throw new IllegalStateException("MAIL_HOST is not configured. Set SMTP environment variables to enable email sending.");
+        }
+
         SimpleMailMessage message = new SimpleMailMessage();
         message.setFrom(fromAddress);
         message.setTo(to);
         message.setSubject(subject);
         message.setText(text);
-        mailSender.send(message);
+
+        try {
+            mailSender.send(message);
+        } catch (Exception ex) {
+            log.error("Failed to send email to {} using host {}", to, mailHost, ex);
+            throw ex;
+        }
     }
 }
-

@@ -2,7 +2,14 @@ import axios from "axios";
 import { Plus, Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { createBooking, fetchBookings, fetchResources, fetchUsers } from "../api/campusApi";
+import {
+  createBooking,
+  fetchBookings,
+  fetchProfile,
+  fetchResources,
+  fetchUsers,
+  updateBookingStatus,
+} from "../api/campusApi";
 import Badge from "../components/common/Badge";
 import Button from "../components/common/Button";
 import Card from "../components/common/Card";
@@ -12,6 +19,7 @@ import Modal from "../components/common/Modal";
 import { useToast } from "../hooks/useToast";
 import { BOOKING_STATUSES } from "../utils/constants";
 import { formatDateTime, titleCase } from "../utils/format";
+import { normalizeRole } from "../utils/roles";
 
 const initialForm = {
   userId: "",
@@ -31,7 +39,9 @@ function BookingsPage() {
   const [query, setQuery] = useState("");
   const [openModal, setOpenModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [updatingBookingId, setUpdatingBookingId] = useState(null);
   const [form, setForm] = useState(initialForm);
+  const [role, setRole] = useState("STUDENT");
   const { addToast } = useToast();
 
   useEffect(() => {
@@ -53,15 +63,17 @@ function BookingsPage() {
     async function loadData() {
       setLoading(true);
       try {
-        const [bookingsData, usersData, resourcesData] = await Promise.all([
+        const [bookingsData, usersData, resourcesData, profileData] = await Promise.all([
           fetchBookings({ page: 0, size: 300 }),
           fetchUsers({ page: 0, size: 300 }),
           fetchResources({ page: 0, size: 300 }),
+          fetchProfile(),
         ]);
 
         setBookings(bookingsData.items);
         setUsers(usersData.items);
         setResources(resourcesData.items);
+        setRole(normalizeRole(profileData?.data?.role) ?? "STUDENT");
       } catch {
         addToast({
           type: "error",
@@ -88,6 +100,31 @@ function BookingsPage() {
   function handleInput(event) {
     const { name, value } = event.target;
     setForm((current) => ({ ...current, [name]: value }));
+  }
+
+  const canModerateBookings = role === "ADMIN" || role === "STAFF";
+
+  async function handleStatusUpdate(bookingId, status) {
+    setUpdatingBookingId(bookingId);
+    try {
+      const response = await updateBookingStatus(bookingId, { status });
+      setBookings((current) =>
+        current.map((booking) => (booking.id === bookingId ? response.data : booking))
+      );
+      addToast({
+        type: "success",
+        title: "Booking updated",
+        message: `Booking marked as ${titleCase(status)}.`,
+      });
+    } catch (error) {
+      addToast({
+        type: "error",
+        title: "Update failed",
+        message: error?.response?.data?.message || "Unable to update booking status.",
+      });
+    } finally {
+      setUpdatingBookingId(null);
+    }
   }
 
   async function handleCreateBooking(event) {
@@ -189,6 +226,7 @@ function BookingsPage() {
                   <th className="pb-3">End</th>
                   <th className="pb-3">Purpose</th>
                   <th className="pb-3">Status</th>
+                  {canModerateBookings ? <th className="pb-3">Actions</th> : null}
                 </tr>
               </thead>
               <tbody className="divide-y divide-[color:var(--border)]">
@@ -202,6 +240,31 @@ function BookingsPage() {
                     <td className="py-3">
                       <Badge value={item.status} />
                     </td>
+                    {canModerateBookings ? (
+                      <td className="py-3">
+                        {item.status === "PENDING" ? (
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              loading={updatingBookingId === item.id}
+                              onClick={() => handleStatusUpdate(item.id, "APPROVED")}
+                            >
+                              Approve
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              loading={updatingBookingId === item.id}
+                              onClick={() => handleStatusUpdate(item.id, "REJECTED")}
+                            >
+                              Reject
+                            </Button>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-[color:var(--text-muted)]">No action</span>
+                        )}
+                      </td>
+                    ) : null}
                   </tr>
                 ))}
               </tbody>
@@ -225,13 +288,13 @@ function BookingsPage() {
           </div>
         }
       >
-        <form id="booking-form" className="grid gap-4 md:grid-cols-2" onSubmit={handleCreateBooking}>
+        <form id="booking-form" className="grid gap-4 lg:grid-cols-2" onSubmit={handleCreateBooking}>
           <FormField label="User">
             <select
               name="userId"
               value={form.userId}
               onChange={handleInput}
-              className="w-full rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none dark:bg-[color:var(--bg-soft)]/70"
+              className="w-full rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 pr-10 text-sm outline-none dark:bg-[color:var(--bg-soft)]/70"
             >
               <option value="">Select user</option>
               {users.map((user) => (
@@ -247,7 +310,7 @@ function BookingsPage() {
               name="resourceId"
               value={form.resourceId}
               onChange={handleInput}
-              className="w-full rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none dark:bg-[color:var(--bg-soft)]/70"
+              className="w-full rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 pr-10 text-sm outline-none dark:bg-[color:var(--bg-soft)]/70"
             >
               <option value="">Select resource</option>
               {resources.map((resource) => (
@@ -278,7 +341,7 @@ function BookingsPage() {
             />
           </FormField>
 
-          <FormField label="Purpose" className="md:col-span-2">
+          <FormField label="Purpose" className="lg:col-span-2">
             <textarea
               name="purpose"
               value={form.purpose}

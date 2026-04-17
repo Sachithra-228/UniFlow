@@ -46,6 +46,7 @@ public class TicketService {
     private final ResourceRepository resourceRepository;
     private final CurrentUserService currentUserService;
     private final TicketAttachmentStorageService ticketAttachmentStorageService;
+    private final NotificationService notificationService;
 
     @Transactional
     public TicketResponseDTO createTicket(OidcUser oidcUser, TicketCreateRequestDTO requestDTO) {
@@ -80,6 +81,7 @@ public class TicketService {
         }
 
         Ticket saved = ticketRepository.save(ticket);
+        notificationService.notifyTicketCreated(saved);
         return toResponse(saved);
     }
 
@@ -133,7 +135,9 @@ public class TicketService {
         if (ticket.getStatus() == TicketStatus.OPEN) {
             ticket.setStatus(TicketStatus.IN_PROGRESS);
         }
-        return toResponse(ticketRepository.save(ticket));
+        Ticket saved = ticketRepository.save(ticket);
+        notificationService.notifyTicketAssigned(saved);
+        return toResponse(saved);
     }
 
     @Transactional
@@ -147,6 +151,8 @@ public class TicketService {
             throw new IllegalArgumentException("Ticket status is required");
         }
 
+        TicketStatus previousStatus = ticket.getStatus();
+
         if (role == UserRole.ADMIN) {
             applyAdminStatusUpdate(ticket, targetStatus, requestDTO.getRejectionReason());
         } else if (role == UserRole.TECHNICIAN) {
@@ -157,7 +163,9 @@ public class TicketService {
         }
 
         ticket.setUpdatedAt(LocalDateTime.now());
-        return toResponse(ticketRepository.save(ticket));
+        Ticket saved = ticketRepository.save(ticket);
+        notificationService.notifyTicketStatusUpdated(saved, previousStatus);
+        return toResponse(saved);
     }
 
     @Transactional

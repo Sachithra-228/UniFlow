@@ -11,72 +11,89 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { NavLink } from "react-router-dom";
-import { fetchProfile } from "../api/campusApi";
+import { NavLink, useLocation } from "react-router-dom";
+import { fetchMyNotifications, fetchProfile } from "../api/campusApi";
 import { cn } from "../utils/cn";
-import { dashboardRouteForRole, normalizeRole } from "../utils/roles";
+import { normalizeRole } from "../utils/roles";
 
-const roleNavItems = {
-  STUDENT: [
-    { to: "/student/dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { to: "/bookings", label: "Bookings", icon: BookCopy },
-    { to: "/tickets", label: "Tickets", icon: ClipboardList },
-    { to: "/notifications", label: "Notifications", icon: BellRing },
-    { to: "/profile", label: "Profile", icon: UserCircle2 },
-  ],
-  STAFF: [
-    { to: "/staff/dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { to: "/bookings", label: "Bookings", icon: BookCopy },
-    { to: "/tickets", label: "Tickets", icon: ClipboardList },
-    { to: "/notifications", label: "Notifications", icon: BellRing },
-    { to: "/profile", label: "Profile", icon: UserCircle2 },
-  ],
-  TECHNICIAN: [
-    { to: "/technician/dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { to: "/tickets", label: "Tickets", icon: ClipboardList },
-    { to: "/bookings", label: "Bookings", icon: BookCopy },
-    { to: "/notifications", label: "Notifications", icon: BellRing },
-    { to: "/profile", label: "Profile", icon: UserCircle2 },
-  ],
-  ADMIN: [
-    { to: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { to: "/resources", label: "Resources", icon: Wrench },
-    { to: "/bookings", label: "Bookings", icon: BookCopy },
-    { to: "/tickets", label: "Tickets", icon: ClipboardList },
-    { to: "/admin/link-requests", label: "Link Requests", icon: Link2 },
-    { to: "/users", label: "Users", icon: UsersRound },
-    { to: "/notifications", label: "Notifications", icon: BellRing },
-    { to: "/profile", label: "Profile", icon: UserCircle2 },
-  ],
-};
+function buildRoleNavItems(unreadCount) {
+  const notificationItem = {
+    to: "/notifications",
+    label: "Notifications",
+    icon: BellRing,
+    badgeCount: unreadCount > 0 ? unreadCount : null,
+  };
+
+  return {
+    STUDENT: [
+      { to: "/student/dashboard", label: "Dashboard", icon: LayoutDashboard },
+      { to: "/bookings", label: "Bookings", icon: BookCopy },
+      { to: "/tickets", label: "Tickets", icon: ClipboardList },
+      notificationItem,
+      { to: "/profile", label: "Profile", icon: UserCircle2 },
+    ],
+    STAFF: [
+      { to: "/staff/dashboard", label: "Dashboard", icon: LayoutDashboard },
+      { to: "/bookings", label: "Bookings", icon: BookCopy },
+      { to: "/tickets", label: "Tickets", icon: ClipboardList },
+      notificationItem,
+      { to: "/profile", label: "Profile", icon: UserCircle2 },
+    ],
+    TECHNICIAN: [
+      { to: "/technician/dashboard", label: "Dashboard", icon: LayoutDashboard },
+      { to: "/tickets", label: "Tickets", icon: ClipboardList },
+      { to: "/bookings", label: "Bookings", icon: BookCopy },
+      notificationItem,
+      { to: "/profile", label: "Profile", icon: UserCircle2 },
+    ],
+    ADMIN: [
+      { to: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
+      { to: "/resources", label: "Resources", icon: Wrench },
+      { to: "/bookings", label: "Bookings", icon: BookCopy },
+      { to: "/tickets", label: "Tickets", icon: ClipboardList },
+      { to: "/admin/link-requests", label: "Link Requests", icon: Link2 },
+      { to: "/users", label: "Users", icon: UsersRound },
+      notificationItem,
+      { to: "/profile", label: "Profile", icon: UserCircle2 },
+    ],
+  };
+}
 
 function Sidebar({ isMobileOpen, onClose, onCollapse, isCollapsed }) {
+  const location = useLocation();
   const [role, setRole] = useState(null);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     let mounted = true;
 
-    async function loadRole() {
+    async function loadNavigationState() {
       try {
-        const response = await fetchProfile();
+        const [profileResponse, unreadResponse] = await Promise.all([
+          fetchProfile(),
+          fetchMyNotifications({ page: 0, size: 1 }, { unreadOnly: true }),
+        ]);
         if (!mounted) return;
-        setRole(normalizeRole(response?.data?.role) ?? "STUDENT");
+        setRole(normalizeRole(profileResponse?.data?.role) ?? "STUDENT");
+        setUnreadCount(unreadResponse.totalElements ?? 0);
       } catch (error) {
         if (!mounted) return;
         setRole("STUDENT");
+        setUnreadCount(0);
       }
     }
 
-    loadRole();
+    loadNavigationState();
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [location.pathname]);
 
   const navItems = useMemo(() => {
     if (!role) return [];
+    const roleNavItems = buildRoleNavItems(unreadCount);
     return roleNavItems[role] ?? roleNavItems.STUDENT;
-  }, [role]);
+  }, [role, unreadCount]);
 
   return (
     <>
@@ -108,15 +125,12 @@ function Sidebar({ isMobileOpen, onClose, onCollapse, isCollapsed }) {
 }
 
 function SidebarBody({ navItems, role, isCollapsed = false, isMobile = false, onClose, onCollapse }) {
-  const roleLabel = role ? `${role} Access` : "Loading Access";
-  const roleHomeRoute = role ? dashboardRouteForRole(role) : "/dashboard";
-
   return (
     <div className="flex h-full flex-col p-4">
       <div className="mb-7 flex items-center justify-between">
         <div className={cn("overflow-hidden transition-all", isCollapsed ? "w-0 opacity-0" : "w-auto opacity-100")}>
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--text-muted)]">Smart Campus</p>
-          <h1 className="mt-1 text-lg font-bold">Operations Hub</h1>
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[color:var(--text-muted)]">UNIFLOW</p>
+          <h1 className="mt-1 text-lg font-bold">Campus Operations</h1>
         </div>
         {isMobile ? (
           <button
@@ -159,17 +173,22 @@ function SidebarBody({ navItems, role, isCollapsed = false, isMobile = false, on
             }
           >
             <item.icon className="h-4 w-4 shrink-0" />
-            <span className={cn("transition-all", isCollapsed && !isMobile && "w-0 overflow-hidden opacity-0")}>{item.label}</span>
+            <span className={cn("transition-all", isCollapsed && !isMobile && "w-0 overflow-hidden opacity-0")}>
+              {item.label}
+            </span>
+            {item.badgeCount ? (
+              <span
+                className={cn(
+                  "ml-auto inline-flex min-w-5 items-center justify-center rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] font-bold text-white",
+                  isCollapsed && !isMobile && "absolute right-1 top-1 min-w-4 px-1"
+                )}
+              >
+                {item.badgeCount > 99 ? "99+" : item.badgeCount}
+              </span>
+            ) : null}
           </NavLink>
         ))}
       </nav>
-
-      <div className="mt-auto rounded-2xl border border-[color:var(--border)] bg-white/60 p-4 dark:bg-white/5">
-        <p className="text-xs font-semibold uppercase tracking-[0.17em] text-[color:var(--text-muted)]">{roleLabel}</p>
-        <NavLink to={roleHomeRoute} className="mt-2 block text-sm font-semibold hover:underline">
-          Go to role dashboard
-        </NavLink>
-      </div>
     </div>
   );
 }

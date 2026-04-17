@@ -30,6 +30,9 @@ public class InviteService {
     @Value("${app.invite.activation-token-hours:48}")
     private long tokenValidityHours;
 
+    @Value("${app.invite.require-email-delivery:false}")
+    private boolean requireEmailDelivery;
+
     private final UserRepository userRepository;
     private final TokenService tokenService;
     private final EmailService emailService;
@@ -38,36 +41,92 @@ public class InviteService {
     @Transactional
     public InvitedUserResponseDTO inviteUser(AdminInviteUserRequestDTO request) {
         String officialEmail = normalizeEmail(request.getEmail());
+        String displayName = request.getName().trim();
         UserRole role = UserRole.from(request.getRole());
 
-        if (userRepository.existsByEmailIgnoreCase(officialEmail)) {
-            throw new IllegalStateException("A user with this email already exists");
-        }
-        if (userRepository.existsByGoogleEmailIgnoreCase(officialEmail)) {
-            throw new IllegalStateException("This email is already linked as a Google account");
+        User existingOfficialUser = userRepository.findByEmailIgnoreCase(officialEmail).orElse(null);
+        if (existingOfficialUser != null) {
+            return handleExistingOfficialUser(existingOfficialUser, displayName, role);
         }
 
+        if (userRepository.existsByGoogleEmailIgnoreCase(officialEmail)) {
+            throw new IllegalArgumentException("This email is already linked to another account");
+        }
+
+        User user = User.builder()
+                .email(officialEmail)
+                .name(displayName)
+                .role(role.name())
+                .password(null)
+                .provider("local")
+                .createdAt(LocalDateTime.now())
+                .accountStatus(AccountStatus.INVITED)
+                .build();
+
+        return issueInvite(user);
+    }
+
+    private InvitedUserResponseDTO handleExistingOfficialUser(User user, String displayName, UserRole role) {
+        user.setName(displayName);
+        user.setRole(role.name());
+
+        if (user.getAccountStatus() == AccountStatus.INVITED) {
+            return issueInvite(user);
+        }
+
+        if (user.getAccountStatus() == null) {
+            user.setAccountStatus(AccountStatus.ACTIVE);
+        }
+
+        User saved = userRepository.save(user);
+        return toInvitedUserResponse(saved, null, null, "User already existed; profile details were updated.");
+    }
+
+    private InvitedUserResponseDTO issueInvite(User user) {
         String rawInviteToken = tokenService.generateUrlSafeToken();
         String hashedInviteToken = tokenService.sha256(rawInviteToken);
         LocalDateTime expiresAt = LocalDateTime.now().plusHours(tokenValidityHours);
 
-        User user = userRepository.save(
-                User.builder()
-                        .email(officialEmail)
-                        .name(request.getName().trim())
-                        .role(role.name())
-                        .password(null)
-                        .provider("local")
-                        .createdAt(LocalDateTime.now())
-                        .accountStatus(AccountStatus.INVITED)
-                        .inviteTokenHash(hashedInviteToken)
-                        .inviteTokenExpiresAt(expiresAt)
-                        .build()
-        );
+        user.setAccountStatus(AccountStatus.INVITED);
+        user.setActivatedAt(null);
+        user.setInviteTokenHash(hashedInviteToken);
+        user.setInviteTokenExpiresAt(expiresAt);
+
+        if (user.getProvider() == null || user.getProvider().isBlank()) {
+            user.setProvider("local");
+        }
+        if (user.getCreatedAt() == null) {
+            user.setCreatedAt(LocalDateTime.now());
+        }
+
+        User saved = userRepository.save(user);
 
         String activationLink = buildActivationLink(rawInviteToken);
-        emailService.sendInvitationEmail(user.getEmail(), user.getName(), activationLink);
+        boolean invitationEmailSent = true;
+        String message = "Invitation created and email sent successfully.";
+        String responseActivationLink = null;
 
+        try {
+            emailService.sendInvitationEmail(saved.getEmail(), saved.getName(), activationLink);
+        } catch (Exception ex) {
+            invitationEmailSent = false;
+            String reason = ex.getMessage() == null ? "unknown error" : ex.getMessage();
+            message = "Invitation created, but email delivery failed (" + reason + "). Share activation link manually.";
+            responseActivationLink = activationLink;
+            if (requireEmailDelivery) {
+                throw new IllegalStateException("Invitation email could not be sent. Check mail server configuration.", ex);
+            }
+        }
+
+        return toInvitedUserResponse(saved, invitationEmailSent, responseActivationLink, message);
+    }
+
+    private InvitedUserResponseDTO toInvitedUserResponse(
+            User user,
+            Boolean invitationEmailSent,
+            String activationLink,
+            String message
+    ) {
         return InvitedUserResponseDTO.builder()
                 .id(user.getId())
                 .email(user.getEmail())
@@ -75,6 +134,9 @@ public class InviteService {
                 .role(user.getRole())
                 .accountStatus(user.getAccountStatus())
                 .inviteTokenExpiresAt(user.getInviteTokenExpiresAt())
+                .invitationEmailSent(invitationEmailSent)
+                .activationLink(activationLink)
+                .message(message)
                 .build();
     }
 
@@ -119,4 +181,3 @@ public class InviteService {
         return email.trim().toLowerCase();
     }
 }
-

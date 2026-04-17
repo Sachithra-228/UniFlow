@@ -15,5 +15,7 @@ public class InvitedUserResponseDTO {
     private String role;
     private AccountStatus accountStatus;
     private LocalDateTime inviteTokenExpiresAt;
+    private Boolean invitationEmailSent;
+    private String activationLink;
+    private String message;
 }
-

@@ -48,6 +48,21 @@ export async function fetchUsers(params = { page: 0, size: 10 }) {
   }
 }
 
+export async function inviteAdminUser(payload) {
+  const response = await api.post("/api/admin/users/invite", payload);
+  return { data: response.data };
+}
+
+export async function updateAdminUser(id, payload) {
+  const response = await api.patch(`/api/admin/users/${id}`, payload);
+  return { data: response.data };
+}
+
+export async function deleteAdminUser(id) {
+  const response = await api.delete(`/api/admin/users/${id}`);
+  return { data: response.data };
+}
+
 export async function fetchResources(params = { page: 0, size: 20 }) {
   try {
     const response = await api.get("/api/resources", { params });
@@ -84,6 +99,16 @@ export async function createResource(payload) {
   }
 }
 
+export async function updateResource(id, payload) {
+  const response = await api.put(`/api/resources/${id}`, payload);
+  return { data: response.data };
+}
+
+export async function deleteResource(id) {
+  const response = await api.delete(`/api/resources/${id}`);
+  return { data: response.data };
+}
+
 export async function createBooking(payload) {
   try {
     const response = await api.post("/api/bookings", payload);
@@ -109,6 +134,11 @@ export async function fetchProfile() {
     }
     throw error;
   }
+}
+
+export async function updateBookingStatus(id, payload) {
+  const response = await api.patch(`/api/bookings/${id}/status`, payload);
+  return { data: response.data };
 }
 
 export function getGoogleLoginUrl() {
@@ -185,4 +215,23 @@ export async function updateTicketComment(ticketId, commentId, payload) {
 
 export async function deleteTicketComment(ticketId, commentId) {
   await api.delete(`/api/tickets/${ticketId}/comments/${commentId}`);
+}
+
+export async function fetchMyNotifications(params = { page: 0, size: 50 }, options = {}) {
+  const query = { ...params };
+  if (options.unreadOnly) {
+    query.unreadOnly = true;
+  }
+  const response = await api.get("/api/notifications/my", { params: query });
+  return { ...fromPagePayload(response.data, params.size), isFallback: false };
+}
+
+export async function markNotificationRead(id) {
+  const response = await api.patch(`/api/notifications/${id}/read`);
+  return { data: response.data };
+}
+
+export async function markAllNotificationsRead() {
+  const response = await api.patch("/api/notifications/read-all");
+  return { data: response.data };
 }

@@ -1,5 +1,4 @@
 ﻿import {
-  ArrowRight,
   BellRing,
   BookOpenCheck,
   CalendarClock,
@@ -85,10 +84,9 @@ function LandingPage() {
                 size="lg"
                 variant="secondary"
                 className="border-slate-300 bg-white text-[color:var(--text)] hover:bg-slate-100 dark:border-white/45 dark:bg-white/90 dark:text-[color:var(--brand)] dark:hover:bg-white"
-                onClick={() => navigate("/dashboard")}
+                onClick={() => navigate("/login")}
               >
-                Explore Dashboard
-                <ArrowRight className="h-4 w-4" />
+                Sign in with Email
               </Button>
             </div>
 

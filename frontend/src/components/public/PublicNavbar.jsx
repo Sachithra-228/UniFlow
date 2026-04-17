@@ -1,7 +1,6 @@
 import { Boxes, Home, Info, Menu, Moon, Sparkles, Sun, X } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
-import { getGoogleLoginUrl } from "../../api/campusApi";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useTheme } from "../../hooks/useTheme";
 import Button from "../common/Button";
 
@@ -25,6 +24,7 @@ function PublicNavbar() {
   const [open, setOpen] = useState(false);
   const [showLandingRail, setShowLandingRail] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
   const hideTopNav = location.pathname === "/" && showLandingRail;
 
@@ -92,7 +92,7 @@ function PublicNavbar() {
               size="sm"
               variant="secondary"
               className="!border-white !bg-white !text-slate-800 hover:!bg-slate-100"
-              onClick={() => (window.location.href = getGoogleLoginUrl())}
+              onClick={() => navigate("/login")}
             >
               Sign In
             </Button>
@@ -188,7 +188,7 @@ function PublicNavbar() {
                 className="w-full !border-white !bg-white !text-slate-800 hover:!bg-slate-100"
                 onClick={() => {
                   setOpen(false);
-                  window.location.href = getGoogleLoginUrl();
+                  navigate("/login");
                 }}
               >
                 Sign In

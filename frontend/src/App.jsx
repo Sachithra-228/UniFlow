@@ -8,6 +8,7 @@ import AboutPage from "./pages/AboutPage";
 import BookingsPage from "./pages/BookingsPage";
 import FeaturesPage from "./pages/FeaturesPage";
 import LandingPage from "./pages/LandingPage";
+import LoginPage from "./pages/LoginPage";
 import ModulesPage from "./pages/ModulesPage";
 import NotificationsPage from "./pages/NotificationsPage";
 import ProfilePage from "./pages/ProfilePage";
@@ -27,6 +28,7 @@ function App() {
         <Route path="/features" element={<FeaturesPage />} />
         <Route path="/modules" element={<ModulesPage />} />
         <Route path="/about" element={<AboutPage />} />
+        <Route path="/login" element={<LoginPage />} />
       </Route>
 
       <Route

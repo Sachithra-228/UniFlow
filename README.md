@@ -1,6 +1,6 @@
 # Smart Campus Operations Hub
 
-Production-style full-stack system for campus users, resources, and bookings with Google OAuth2 login.
+Production-style full-stack system for campus users, resources, and bookings with optional Google OAuth2 login.
 
 ## Tech Stack
 
@@ -22,31 +22,33 @@ Frontend
 ## Prerequisites
 
 - Java 17
-- PostgreSQL running locally
 - Node.js 18+ (for frontend)
 - Maven (optional if using `mvnw`)
+- PostgreSQL running locally if you want to use the persistent database
 
 ## Database
 
-Database name: `smart_campus_db`
+By default the backend starts with an in-memory H2 database for local development.
 
-Tables already exist: `users`, `resources`, `bookings` (snake_case columns).  
-DDL is not managed by Hibernate (`spring.jpa.hibernate.ddl-auto=none`).
+To use PostgreSQL instead, set:
+```powershell
+$env:DB_URL="jdbc:postgresql://localhost:5432/smart_campus_db"
+$env:DB_USERNAME="your_db_username"
+$env:DB_PASSWORD="your_db_password"
+```
 
 ## Environment Variables
 
-Backend uses environment variables for secrets.
+Backend uses environment variables for secrets and optional integrations.
 
 PowerShell (Windows):
 ```powershell
-$env:DB_PASSWORD="your_db_password"
 $env:GOOGLE_CLIENT_ID="your_google_client_id"
 $env:GOOGLE_CLIENT_SECRET="your_google_client_secret"
 ```
 
 Bash (macOS/Linux):
 ```bash
-export DB_PASSWORD="your_db_password"
 export GOOGLE_CLIENT_ID="your_google_client_id"
 export GOOGLE_CLIENT_SECRET="your_google_client_secret"
 ```
@@ -66,7 +68,7 @@ Backend runs on: `http://localhost:8081`
 
 ### OAuth2 Login
 
-After Google sign-in, users are saved to the `users` table and redirected to the frontend:
+When `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are set, Google sign-in is enabled and users are redirected to the frontend:
 ```
 http://localhost:5173/dashboard
 ```

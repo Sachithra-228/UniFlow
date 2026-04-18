@@ -3,10 +3,10 @@ import { cn } from "../../utils/cn";
 
 const variants = {
   primary:
-    "bg-[color:var(--brand)] text-white shadow-sm hover:brightness-110 active:brightness-95 dark:text-slate-900 dark:font-bold",
+    "border border-emerald-300/30 bg-gradient-to-r from-[color:var(--brand)] via-[color:var(--navy-mid)] to-[color:var(--accent)] text-white shadow-[0_16px_38px_rgba(18,58,120,0.26)] hover:-translate-y-0.5 hover:brightness-110 active:translate-y-0 active:brightness-95",
   secondary:
-    "bg-white/80 text-[color:var(--text)] border border-[color:var(--border)] hover:bg-white dark:bg-[color:var(--bg-soft)] dark:hover:bg-[color:var(--bg-soft)]/90",
-  ghost: "bg-transparent text-[color:var(--text)] hover:bg-black/5 dark:hover:bg-white/10",
+    "bg-white/80 text-[color:var(--brand)] border border-emerald-200/70 hover:bg-emerald-50 dark:bg-[color:var(--bg-soft)] dark:hover:bg-[color:var(--bg-soft)]/90",
+  ghost: "bg-transparent text-[color:var(--brand)] hover:bg-emerald-500/10 dark:hover:bg-white/10",
   danger: "bg-rose-600 text-white hover:bg-rose-500",
 };
 

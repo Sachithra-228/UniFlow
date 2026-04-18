@@ -99,7 +99,7 @@ function Sidebar({ isMobileOpen, onClose, onCollapse, isCollapsed }) {
     <>
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 hidden border-r border-[color:var(--border)] bg-[color:var(--bg-soft)]/90 backdrop-blur-lg lg:block",
+          "fixed inset-y-0 left-0 z-50 hidden border-r border-emerald-200/20 bg-[linear-gradient(180deg,rgba(9,26,61,0.98)_0%,rgba(18,58,120,0.95)_55%,rgba(21,154,107,0.9)_100%)] text-white shadow-[0_24px_70px_rgba(9,26,61,0.35)] backdrop-blur-lg dark:border-[color:var(--border)] dark:bg-[color:var(--bg-soft)]/90 dark:text-[color:var(--text)] dark:shadow-none lg:block",
           isCollapsed ? "w-[88px]" : "w-[268px]"
         )}
       >
@@ -114,7 +114,7 @@ function Sidebar({ isMobileOpen, onClose, onCollapse, isCollapsed }) {
       <div className={cn("fixed inset-0 z-[90] bg-slate-950/55 lg:hidden", isMobileOpen ? "block" : "hidden")} onClick={onClose} />
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-[95] w-[280px] border-r border-[color:var(--border)] bg-[color:var(--bg-soft)]/95 p-4 backdrop-blur-xl transition-transform duration-300 lg:hidden",
+          "fixed inset-y-0 left-0 z-[95] w-[280px] border-r border-emerald-200/20 bg-[linear-gradient(180deg,rgba(9,26,61,0.98)_0%,rgba(18,58,120,0.95)_55%,rgba(21,154,107,0.9)_100%)] p-4 text-white backdrop-blur-xl transition-transform duration-300 dark:border-[color:var(--border)] dark:bg-[color:var(--bg-soft)]/95 dark:text-[color:var(--text)] lg:hidden",
           isMobileOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
@@ -129,13 +129,13 @@ function SidebarBody({ navItems, role, isCollapsed = false, isMobile = false, on
     <div className="flex h-full flex-col p-4">
       <div className="mb-7 flex items-center justify-between">
         <div className={cn("overflow-hidden transition-all", isCollapsed ? "w-0 opacity-0" : "w-auto opacity-100")}>
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[color:var(--text-muted)]">UNIFLOW</p>
-          <h1 className="mt-1 text-lg font-bold">Campus Operations</h1>
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-200/80 dark:text-[color:var(--text-muted)]">UNIFLOW</p>
+          <h1 className="mt-1 text-lg font-bold text-white dark:text-[color:var(--text)]">Campus Operations</h1>
         </div>
         {isMobile ? (
           <button
             type="button"
-            className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-[color:var(--border)]"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/20 bg-white/10 text-white dark:border-[color:var(--border)] dark:bg-transparent dark:text-[color:var(--text)]"
             onClick={onClose}
           >
             <X className="h-4 w-4" />
@@ -143,7 +143,7 @@ function SidebarBody({ navItems, role, isCollapsed = false, isMobile = false, on
         ) : (
           <button
             type="button"
-            className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-[color:var(--border)] transition hover:bg-white/70 dark:hover:bg-white/5"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/20 bg-white/10 text-white transition hover:bg-white/18 dark:border-[color:var(--border)] dark:bg-transparent dark:text-[color:var(--text)] dark:hover:bg-white/5"
             onClick={onCollapse}
           >
             <PanelLeftClose className={cn("h-4 w-4 transition", isCollapsed && "rotate-180")} />
@@ -153,7 +153,7 @@ function SidebarBody({ navItems, role, isCollapsed = false, isMobile = false, on
 
       <nav className="space-y-2">
         {!navItems.length ? (
-          <div className="rounded-xl border border-[color:var(--border)] bg-white/60 px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-[color:var(--text-muted)] dark:bg-[color:var(--bg-soft)]/70">
+          <div className="rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-white/70 dark:border-[color:var(--border)] dark:bg-[color:var(--bg-soft)]/70 dark:text-[color:var(--text-muted)]">
             Loading menu...
           </div>
         ) : null}
@@ -166,8 +166,8 @@ function SidebarBody({ navItems, role, isCollapsed = false, isMobile = false, on
               cn(
                 "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition",
                 isActive
-                  ? "bg-gradient-to-r from-cyan-500/20 to-teal-500/15 text-[color:var(--text)] shadow-sm"
-                  : "text-[color:var(--text-muted)] hover:bg-black/5 hover:text-[color:var(--text)] dark:hover:bg-white/5",
+                  ? "bg-gradient-to-r from-emerald-300/30 via-emerald-200/18 to-white/12 text-white shadow-[0_12px_30px_rgba(0,0,0,0.18)] dark:bg-gradient-to-r dark:from-cyan-500/20 dark:to-teal-500/15 dark:text-[color:var(--text)] dark:shadow-sm"
+                  : "text-white/72 hover:bg-white/10 hover:text-white dark:text-[color:var(--text-muted)] dark:hover:bg-white/5 dark:hover:text-[color:var(--text)]",
                 isCollapsed && !isMobile && "justify-center px-2"
               )
             }

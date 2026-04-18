@@ -39,12 +39,12 @@ const styles = {
 
 function Badge({ value, className }) {
   if (value === null || value === undefined || value === "") {
-    return <span className="inline-flex rounded-full bg-slate-200 px-2.5 py-1 text-xs font-semibold dark:bg-slate-700">N/A</span>;
+    return <span className="inline-flex rounded-full border border-slate-300/70 bg-white/80 px-2.5 py-1 text-xs font-semibold dark:bg-slate-700">N/A</span>;
   }
 
   const key = String(value).toUpperCase();
   return (
-    <span className={cn("inline-flex rounded-full px-2.5 py-1 text-xs font-semibold", styles[key], className)}>
+    <span className={cn("inline-flex rounded-full border border-white/40 px-2.5 py-1 text-xs font-semibold shadow-sm", styles[key], className)}>
       {titleCase(String(value))}
     </span>
   );

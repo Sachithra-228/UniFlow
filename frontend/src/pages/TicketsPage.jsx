@@ -495,20 +495,25 @@ function TicketsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <Card className="p-6">
+    <div className="dashboard-shell space-y-6">
+      <Card className="hero-panel overflow-hidden p-6 dark:border-sky-500/20 dark:bg-[linear-gradient(135deg,rgba(6,16,42,0.96)_0%,rgba(13,42,95,0.94)_58%,rgba(22,66,124,0.92)_100%)] dark:shadow-[0_24px_60px_rgba(2,8,24,0.32)]">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[color:var(--text-muted)]">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-100/75 dark:text-[color:var(--text-muted)]">
               Tickets
             </p>
-            <h2 className="mt-2 text-2xl font-bold">{titleCase(role || "user")} Ticket Workspace</h2>
-            <p className="mt-2 text-sm text-[color:var(--text-muted)]">
+            <h2 className="mt-2 text-2xl font-bold text-white dark:text-[color:var(--text)]">
+              {titleCase(role || "user")} Ticket Workspace
+            </h2>
+            <p className="mt-2 max-w-2xl text-sm text-sky-50/80 dark:text-[color:var(--text-muted)]">
               Create, track, assign, resolve, and comment on operational tickets by role permissions.
             </p>
           </div>
           {canCreateTicket ? (
-            <Button onClick={() => setCreateModalOpen(true)}>
+            <Button
+              className="border-0 bg-white text-[color:var(--brand)] shadow-[0_14px_30px_rgba(255,255,255,0.18)] hover:bg-slate-100 dark:bg-[color:var(--brand)] dark:text-white"
+              onClick={() => setCreateModalOpen(true)}
+            >
               <Plus className="h-4 w-4" />
               Create Ticket
             </Button>
@@ -524,21 +529,21 @@ function TicketsPage() {
         <SummaryCard icon={UserCircle2} label="Rejected" value={summary.rejected} />
       </div>
 
-      <Card className="p-4 md:p-5">
+      <Card className="action-panel p-4 md:p-5 dark:bg-[linear-gradient(180deg,rgba(13,29,64,0.96)_0%,rgba(10,25,55,0.88)_100%)]">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <label className="flex flex-1 items-center gap-2 rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 dark:bg-[color:var(--bg-soft)]/80">
-            <Search className="h-4 w-4 text-[color:var(--text-muted)]" />
+          <label className="flex flex-1 items-center gap-2 rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 shadow-sm dark:border-sky-500/20 dark:bg-slate-950/30">
+            <Search className="h-4 w-4 text-[color:var(--text-muted)] dark:text-sky-200/80" />
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Search tickets by description, category, status, user..."
-              className="w-full bg-transparent text-sm outline-none placeholder:text-[color:var(--text-muted)]/70"
+              className="w-full bg-transparent text-sm outline-none placeholder:text-[color:var(--text-muted)]/70 dark:text-[color:var(--text)]"
             />
           </label>
           <select
             value={statusFilter}
             onChange={(event) => setStatusFilter(event.target.value)}
-            className="rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none dark:bg-[color:var(--bg-soft)]/80"
+            className="rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none dark:border-sky-500/20 dark:bg-slate-950/30 dark:text-[color:var(--text)]"
           >
             <option value="ALL">All Status</option>
             {TICKET_STATUSES.map((status) => (
@@ -551,7 +556,7 @@ function TicketsPage() {
       </Card>
 
       {filteredTickets.length === 0 ? (
-        <Card className="p-6">
+        <Card className="action-panel p-6 dark:bg-[linear-gradient(180deg,rgba(13,29,64,0.96)_0%,rgba(10,25,55,0.88)_100%)]">
           <EmptyState
             title="No tickets found"
             description={
@@ -651,8 +656,8 @@ function TicketsPage() {
                     ) : null}
 
                     {canUpdateStatus ? (
-                      <div className="rounded-xl border border-[color:var(--border)] bg-white/70 p-3 dark:bg-[color:var(--bg-soft)]/75">
-                        <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--text-muted)]">
+                      <div className="rounded-xl border border-[color:var(--border)] bg-white/70 p-3 dark:border-sky-500/20 dark:bg-[linear-gradient(180deg,rgba(13,29,64,0.98)_0%,rgba(9,24,52,0.92)_100%)]">
+                        <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--text-muted)] dark:text-sky-200/80">
                           Update Status
                         </p>
                         <div className="flex gap-2">
@@ -661,7 +666,7 @@ function TicketsPage() {
                             onChange={(event) =>
                               setStatusByTicket((current) => ({ ...current, [ticket.id]: event.target.value }))
                             }
-                            className="w-full rounded-xl border border-[color:var(--border)] bg-white/80 px-3 py-2 text-xs outline-none dark:bg-[color:var(--bg-soft)]"
+                            className="w-full rounded-xl border border-[color:var(--border)] bg-white/80 px-3 py-2 text-xs outline-none dark:border-sky-500/20 dark:bg-slate-950/40 dark:text-[color:var(--text)]"
                           >
                             <option value="">Select status</option>
                             {(role === "TECHNICIAN"
@@ -675,6 +680,7 @@ function TicketsPage() {
                           </select>
                           <Button
                             size="sm"
+                            className="dark:border-0 dark:bg-sky-600 dark:text-white dark:hover:bg-sky-500"
                             loading={busyKey === `status-${ticket.id}`}
                             onClick={() => handleStatusUpdate(ticket)}
                           >
@@ -692,15 +698,15 @@ function TicketsPage() {
                               }))
                             }
                             placeholder="Rejection reason (required)"
-                            className="mt-2 w-full rounded-xl border border-[color:var(--border)] bg-white/80 px-3 py-2 text-xs outline-none dark:bg-[color:var(--bg-soft)]"
+                            className="mt-2 w-full rounded-xl border border-[color:var(--border)] bg-white/80 px-3 py-2 text-xs outline-none dark:border-sky-500/20 dark:bg-slate-950/40 dark:text-[color:var(--text)]"
                           />
                         ) : null}
                       </div>
                     ) : null}
 
                     {canAddResolution ? (
-                      <div className="rounded-xl border border-[color:var(--border)] bg-white/70 p-3 dark:bg-[color:var(--bg-soft)]/75">
-                        <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--text-muted)]">
+                      <div className="rounded-xl border border-[color:var(--border)] bg-white/70 p-3 dark:border-sky-500/20 dark:bg-[linear-gradient(180deg,rgba(13,29,64,0.98)_0%,rgba(9,24,52,0.92)_100%)]">
+                        <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--text-muted)] dark:text-sky-200/80">
                           Resolution Notes
                         </p>
                         <textarea
@@ -710,11 +716,12 @@ function TicketsPage() {
                             setResolutionByTicket((current) => ({ ...current, [ticket.id]: event.target.value }))
                           }
                           placeholder="Add resolution details"
-                          className="w-full rounded-xl border border-[color:var(--border)] bg-white/80 px-3 py-2 text-xs outline-none dark:bg-[color:var(--bg-soft)]"
+                          className="w-full rounded-xl border border-[color:var(--border)] bg-white/80 px-3 py-2 text-xs outline-none dark:border-sky-500/20 dark:bg-slate-950/40 dark:text-[color:var(--text)]"
                         />
                         <div className="mt-2 flex justify-end">
                           <Button
                             size="sm"
+                            className="dark:border-0 dark:bg-sky-600 dark:text-white dark:hover:bg-sky-500"
                             loading={busyKey === `resolution-${ticket.id}`}
                             onClick={() => handleResolutionSave(ticket.id)}
                           >
@@ -747,24 +754,24 @@ function TicketsPage() {
                   </div>
                 ) : null}
 
-                <div className="mt-4 rounded-xl border border-[color:var(--border)] bg-white/60 p-3 dark:bg-[color:var(--bg-soft)]/70">
-                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--text-muted)]">
+                <div className="mt-4 rounded-xl border border-[color:var(--border)] bg-white/60 p-3 dark:border-sky-500/20 dark:bg-[linear-gradient(180deg,rgba(13,29,64,0.98)_0%,rgba(9,24,52,0.92)_100%)]">
+                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--text-muted)] dark:text-sky-200/80">
                     Comments
                   </p>
                   <div className="mt-2 space-y-2">
                     {(ticket.comments || []).map((comment) => {
                       const isEditing = editingComment?.commentId === comment.id;
                       return (
-                        <div key={comment.id} className="rounded-lg border border-[color:var(--border)] bg-white/80 p-2 text-xs dark:bg-[color:var(--bg-soft)]/80">
+                        <div key={comment.id} className="rounded-lg border border-[color:var(--border)] bg-white/80 p-2 text-xs dark:border-sky-500/20 dark:bg-slate-950/30 dark:text-[color:var(--text)]">
                           <div className="mb-1 flex items-center justify-between gap-3">
-                            <p className="font-semibold">
-                              {comment.authorName} · {formatDateTime(comment.createdAt)}
+                            <p className="font-semibold text-[color:var(--text)] dark:text-slate-100">
+                              {comment.authorName} · <span className="text-[color:var(--text-muted)] dark:text-sky-100/65">{formatDateTime(comment.createdAt)}</span>
                             </p>
                             {canEditComment(comment) ? (
                               <div className="flex gap-2">
                                 <button
                                   type="button"
-                                  className="text-[color:var(--brand)] hover:underline"
+                                  className="rounded-lg px-2 py-1 text-sky-600 transition hover:bg-sky-50 hover:no-underline dark:bg-sky-500/10 dark:text-sky-300 dark:hover:bg-sky-500/20"
                                   onClick={() =>
                                     setEditingComment({
                                       ticketId: ticket.id,
@@ -777,7 +784,7 @@ function TicketsPage() {
                                 </button>
                                 <button
                                   type="button"
-                                  className="text-rose-700 hover:underline dark:text-rose-300"
+                                  className="rounded-lg px-2 py-1 text-rose-700 transition hover:bg-rose-50 hover:no-underline dark:bg-rose-500/10 dark:text-rose-300 dark:hover:bg-rose-500/20"
                                   onClick={() => handleDeleteComment(ticket.id, comment.id)}
                                   disabled={busyKey === `comment-delete-${comment.id}`}
                                 >
@@ -796,18 +803,20 @@ function TicketsPage() {
                                     current ? { ...current, text: event.target.value } : current
                                   )
                                 }
-                                className="w-full rounded-xl border border-[color:var(--border)] bg-white px-3 py-2 text-xs outline-none dark:bg-[color:var(--bg-soft)]"
+                                className="w-full rounded-xl border border-[color:var(--border)] bg-white px-3 py-2 text-xs outline-none dark:border-sky-500/20 dark:bg-slate-950/40 dark:text-[color:var(--text)]"
                               />
                               <div className="flex justify-end gap-2">
                                 <Button
                                   size="sm"
                                   variant="secondary"
+                                  className="dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
                                   onClick={() => setEditingComment(null)}
                                 >
                                   Cancel
                                 </Button>
                                 <Button
                                   size="sm"
+                                  className="dark:border-0 dark:bg-sky-600 dark:text-white dark:hover:bg-sky-500"
                                   loading={busyKey === `comment-edit-${comment.id}`}
                                   onClick={() => handleSaveEditedComment(ticket.id, comment.id)}
                                 >
@@ -816,14 +825,14 @@ function TicketsPage() {
                               </div>
                             </div>
                           ) : (
-                            <p>{comment.comment}</p>
+                            <p className="text-[color:var(--text)] dark:text-slate-100">{comment.comment}</p>
                           )}
                         </div>
                       );
                     })}
 
                     {!(ticket.comments || []).length ? (
-                      <p className="text-xs text-[color:var(--text-muted)]">No comments yet.</p>
+                      <p className="text-xs text-[color:var(--text-muted)] dark:text-sky-100/65">No comments yet.</p>
                     ) : null}
                   </div>
 
@@ -835,10 +844,11 @@ function TicketsPage() {
                         setCommentDraftByTicket((current) => ({ ...current, [ticket.id]: event.target.value }))
                       }
                       placeholder="Add a comment..."
-                      className="w-full rounded-xl border border-[color:var(--border)] bg-white/80 px-3 py-2 text-xs outline-none dark:bg-[color:var(--bg-soft)]"
+                      className="w-full rounded-xl border border-[color:var(--border)] bg-white/80 px-3 py-2 text-xs outline-none dark:border-sky-500/20 dark:bg-slate-950/40 dark:text-[color:var(--text)]"
                     />
                     <Button
                       size="sm"
+                      className="dark:border-0 dark:bg-sky-600 dark:text-white dark:hover:bg-sky-500"
                       loading={busyKey === `comment-add-${ticket.id}`}
                       onClick={() => handleAddComment(ticket.id)}
                     >
@@ -987,12 +997,12 @@ function TicketsPage() {
 
 function SummaryCard({ icon: Icon, label, value }) {
   return (
-    <Card className="p-4">
+    <Card className="metric-panel p-4 dark:bg-[linear-gradient(180deg,rgba(13,29,64,0.96)_0%,rgba(10,25,55,0.88)_100%)]">
       <div className="flex items-center gap-2">
-        <Icon className="h-4 w-4 text-[color:var(--brand)]" />
+        <Icon className="h-4 w-4 text-[color:var(--brand)] dark:text-sky-300" />
         <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--text-muted)]">{label}</p>
       </div>
-      <p className="mt-2 text-2xl font-bold">{value}</p>
+      <p className="mt-2 text-2xl font-bold dark:text-[color:var(--text)]">{value}</p>
     </Card>
   );
 }

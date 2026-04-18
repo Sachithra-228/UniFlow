@@ -131,27 +131,28 @@ function TechnicianDashboardPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <Card className="p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <div className="dashboard-shell space-y-6">
+      <Card className="hero-panel overflow-hidden p-6 md:p-8 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[color:var(--text-muted)]">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-100/80 dark:text-[color:var(--text-muted)]">
             Technician Workspace
           </p>
-          <h2 className="mt-2 text-2xl font-bold">Technician Dashboard</h2>
-          <p className="mt-2 text-sm text-[color:var(--text-muted)]">
+          <h2 className="mt-3 text-3xl font-bold text-white dark:text-[color:var(--text)] md:text-4xl">Technician Dashboard</h2>
+          <p className="mt-3 max-w-2xl text-sm text-sky-50/82 dark:text-[color:var(--text-muted)] md:text-base">
             Track assigned maintenance workflows and keep resource issue
             resolution aligned with live operations.
           </p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 rounded-3xl border border-sky-100/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(240,246,255,0.94)_100%)] px-5 py-4 text-[color:var(--navy-deep)] shadow-[0_16px_34px_rgba(9,26,61,0.12)] backdrop-blur dark:border-[color:var(--border)] dark:bg-[color:var(--bg-soft)]/35 dark:text-[color:var(--text)]">
           <div className="text-right">
-            <p className="text-xs text-[color:var(--text-muted)]">
+            <p className="text-xs uppercase tracking-[0.16em] text-sky-700/70 dark:text-[color:var(--text-muted)]">
               Assigned to you
             </p>
-            <p className="mt-1 text-3xl font-bold">{ticketSummary.assigned}</p>
+            <p className="mt-1 text-4xl font-bold text-[color:var(--navy-deep)] dark:text-[color:var(--text)]">{ticketSummary.assigned}</p>
           </div>
           <div>
             <Button
+              className="min-w-[180px] border-0 bg-[#1b4fa3] bg-none text-white shadow-[0_14px_30px_rgba(27,79,163,0.26)] hover:bg-[#163f82] dark:bg-[color:var(--brand)]"
               onClick={() => (window.location.href = "/tickets?view=assigned")}
             >
               Open assigned tickets
@@ -280,23 +281,24 @@ function TechnicianDashboardPage() {
 
 function MetricCard({ title, value }) {
   return (
-    <Card className="p-4">
-      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[color:var(--text-muted)]">
+    <Card className="metric-panel relative overflow-hidden p-5">
+      <div className="absolute right-0 top-0 h-20 w-20 rounded-full bg-emerald-300/25 blur-2xl dark:bg-sky-400/10" />
+      <p className="relative text-xs font-semibold uppercase tracking-[0.16em] text-[color:var(--brand)] dark:text-[color:var(--text-muted)]">
         {title}
       </p>
-      <p className="mt-2 text-2xl font-bold">{value}</p>
+      <p className="relative mt-3 text-4xl font-bold text-[color:var(--navy-deep)] dark:text-[color:var(--text)]">{value}</p>
     </Card>
   );
 }
 
 function WorkflowCard({ icon: Icon, title, description }) {
   return (
-    <Card className="p-4">
-      <span className="inline-flex rounded-lg bg-[color:var(--brand-soft)] p-2 text-[color:var(--brand)]">
-        <Icon className="h-4 w-4" />
+    <Card className="action-panel p-5 transition hover:-translate-y-1">
+      <span className="inline-flex rounded-2xl bg-gradient-to-br from-[color:var(--brand)] to-[color:var(--accent)] p-3 text-white shadow-[0_12px_28px_rgba(18,58,120,0.18)]">
+        <Icon className="h-5 w-5" />
       </span>
-      <p className="mt-3 font-semibold">{title}</p>
-      <p className="mt-1 text-xs text-[color:var(--text-muted)]">
+      <p className="mt-4 text-lg font-semibold text-[color:var(--navy-deep)] dark:text-[color:var(--text)]">{title}</p>
+      <p className="mt-2 text-sm text-[color:var(--text-muted)]">
         {description}
       </p>
     </Card>
@@ -307,13 +309,13 @@ function QuickAction({ to, icon: Icon, title, subtitle }) {
   return (
     <Link
       to={to}
-      className="flex items-center gap-3 rounded-xl border border-[color:var(--border)] bg-white/70 p-4 transition hover:bg-white dark:bg-[color:var(--bg-soft)]/75 dark:hover:bg-[color:var(--bg-soft)]"
+      className="action-panel flex items-center gap-4 rounded-2xl p-4 transition hover:-translate-y-1 hover:shadow-[0_18px_36px_rgba(18,58,120,0.12)] dark:bg-[color:var(--bg-soft)]/75 dark:hover:bg-[color:var(--bg-soft)]"
     >
-      <span className="rounded-lg bg-[color:var(--brand-soft)] p-2 text-[color:var(--brand)]">
-        <Icon className="h-4 w-4" />
+      <span className="rounded-2xl bg-gradient-to-br from-[color:var(--accent)] to-[color:var(--brand)] p-3 text-white shadow-[0_12px_30px_rgba(18,58,120,0.18)]">
+        <Icon className="h-5 w-5" />
       </span>
       <span>
-        <p className="font-semibold">{title}</p>
+        <p className="font-semibold text-[color:var(--navy-deep)] dark:text-[color:var(--text)]">{title}</p>
         <p className="text-xs text-[color:var(--text-muted)]">{subtitle}</p>
       </span>
     </Link>

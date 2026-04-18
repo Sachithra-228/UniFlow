@@ -30,12 +30,12 @@ function Topbar({ onMenuClick }) {
   }, [location.pathname]);
 
   return (
-    <header className="sticky top-0 z-40 border-b border-[color:var(--border)] bg-[color:var(--bg)]/80 px-4 py-3 backdrop-blur-lg md:px-6">
+    <header className="sticky top-0 z-40 border-b border-[color:var(--border)] bg-white/80 px-4 py-3 backdrop-blur-lg md:px-6 dark:bg-slate-950/80">
       <div className="flex items-center gap-3">
         <button
           type="button"
           onClick={onMenuClick}
-          className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[color:var(--border)] bg-white/70 lg:hidden dark:bg-[color:var(--bg-soft)]"
+          className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[color:var(--border)] bg-white/70 lg:hidden dark:bg-white/[0.08]"
         >
           <Menu className="h-4 w-4" />
         </button>
@@ -45,7 +45,7 @@ function Topbar({ onMenuClick }) {
           <h2 className="truncate text-lg font-bold">{title}</h2>
         </div>
 
-        <div className="hidden w-full max-w-sm items-center gap-2 rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 md:flex dark:bg-[color:var(--bg-soft)]/85">
+        <div className="hidden w-full max-w-sm items-center gap-2 rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 md:flex dark:bg-white/[0.08]">
           <Search className="h-4 w-4 text-[color:var(--text-muted)]" />
           <input
             type="text"
@@ -61,7 +61,7 @@ function Topbar({ onMenuClick }) {
         <button
           type="button"
           onClick={() => navigate("/notifications")}
-          className="relative inline-flex items-center gap-2 rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm font-semibold dark:bg-[color:var(--bg-soft)]/80"
+          className="relative inline-flex items-center gap-2 rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm font-semibold dark:bg-white/[0.08]"
         >
           <BellRing className="h-4 w-4" />
           <span className="hidden md:inline">Notifications</span>
@@ -71,11 +71,10 @@ function Topbar({ onMenuClick }) {
             </span>
           ) : null}
         </button>
-
         <button
           type="button"
           onClick={() => navigate("/profile")}
-          className="hidden items-center gap-2 rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm font-semibold md:inline-flex dark:bg-[color:var(--bg-soft)]/80"
+          className="hidden items-center gap-2 rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm font-semibold md:inline-flex dark:bg-white/[0.08]"
         >
           <ShieldCheck className="h-4 w-4" />
           Profile

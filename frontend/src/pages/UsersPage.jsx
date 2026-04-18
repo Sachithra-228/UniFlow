@@ -254,7 +254,7 @@ function UsersPage() {
     <div className="space-y-6">
       <Card className="p-4 md:p-5">
         <div className="flex flex-col gap-3 md:flex-row md:items-center">
-          <label className="flex flex-1 items-center gap-2 rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 dark:bg-[color:var(--bg-soft)]/80">
+          <label className="flex flex-1 items-center gap-2 rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 dark:bg-white/[0.08]">
             <Search className="h-4 w-4 text-[color:var(--text-muted)]" />
             <input
               value={query}
@@ -267,7 +267,7 @@ function UsersPage() {
           <select
             value={roleFilter}
             onChange={(event) => setRoleFilter(event.target.value)}
-            className="rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none dark:bg-[color:var(--bg-soft)]/80"
+            className="rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none dark:bg-white/[0.08]"
           >
             <option value="ALL">All Roles</option>
             {ROLE_OPTIONS.map((role) => (
@@ -296,7 +296,7 @@ function UsersPage() {
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {filteredUsers.map((user) => (
-              <article key={user.id} className="rounded-2xl border border-[color:var(--border)] bg-white/70 p-4 dark:bg-[color:var(--bg-soft)]/80">
+              <article key={user.id} className="rounded-2xl border border-[color:var(--border)] bg-white/70 p-4 dark:bg-white/[0.08]">
                 <div className="mb-3 flex items-center justify-between">
                   <span className="rounded-xl bg-[color:var(--brand-soft)] p-2">
                     <UserRound className="h-4 w-4 text-[color:var(--brand)]" />
@@ -363,7 +363,7 @@ function UsersPage() {
               value={inviteForm.name}
               onChange={handleInviteInput}
               placeholder="E.g. Alex Perera"
-              className="w-full rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none dark:bg-[color:var(--bg-soft)]/80"
+              className="w-full rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none dark:bg-white/[0.08]"
             />
           </FormField>
 
@@ -374,7 +374,7 @@ function UsersPage() {
               value={inviteForm.email}
               onChange={handleInviteInput}
               placeholder="name@campus.edu"
-              className="w-full rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none dark:bg-[color:var(--bg-soft)]/80"
+              className="w-full rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none dark:bg-white/[0.08]"
             />
           </FormField>
 
@@ -383,7 +383,7 @@ function UsersPage() {
               name="role"
               value={inviteForm.role}
               onChange={handleInviteInput}
-              className="w-full rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none dark:bg-[color:var(--bg-soft)]/80"
+              className="w-full rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none dark:bg-white/[0.08]"
             >
               {ROLE_OPTIONS.map((role) => (
                 <option key={role} value={role}>
@@ -416,7 +416,7 @@ function UsersPage() {
               name="name"
               value={editForm.name}
               onChange={handleEditInput}
-              className="w-full rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none dark:bg-[color:var(--bg-soft)]/80"
+              className="w-full rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none dark:bg-white/[0.08]"
             />
           </FormField>
 
@@ -425,7 +425,7 @@ function UsersPage() {
               name="role"
               value={editForm.role}
               onChange={handleEditInput}
-              className="w-full rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none dark:bg-[color:var(--bg-soft)]/80"
+              className="w-full rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none dark:bg-white/[0.08]"
             >
               {ROLE_OPTIONS.map((role) => (
                 <option key={role} value={role}>
@@ -440,7 +440,7 @@ function UsersPage() {
               name="accountStatus"
               value={editForm.accountStatus}
               onChange={handleEditInput}
-              className="w-full rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none dark:bg-[color:var(--bg-soft)]/80"
+              className="w-full rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none dark:bg-white/[0.08]"
             >
               {ACCOUNT_STATUS_OPTIONS.map((status) => (
                 <option key={status} value={status}>

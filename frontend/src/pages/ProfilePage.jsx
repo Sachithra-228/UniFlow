@@ -105,7 +105,7 @@ function ProfilePage() {
 
 function ProfileField({ icon: Icon, label, value }) {
   return (
-    <div className="rounded-xl border border-[color:var(--border)] bg-white/70 px-4 py-3 dark:bg-[color:var(--bg-soft)]/80">
+    <div className="rounded-xl border border-[color:var(--border)] bg-white/70 px-4 py-3 dark:bg-white/[0.08]">
       <p className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-[color:var(--text-muted)]">
         <Icon className="h-3.5 w-3.5" />
         {label}

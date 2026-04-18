@@ -145,14 +145,14 @@ function AdminLinkRequestsPage() {
 
       <Card className="p-4 md:p-5">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div className="inline-flex items-center gap-2 rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm dark:bg-[color:var(--bg-soft)]/80">
+          <div className="inline-flex items-center gap-2 rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm dark:bg-white/[0.08]">
             <span className="font-semibold text-[color:var(--text-muted)]">Pending:</span>
             <span className="font-bold">{pendingCount}</span>
           </div>
           <select
             value={statusFilter}
             onChange={(event) => setStatusFilter(event.target.value)}
-            className="rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none dark:bg-[color:var(--bg-soft)]/80"
+            className="rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none dark:bg-white/[0.08]"
           >
             {STATUS_OPTIONS.map((status) => (
               <option key={status} value={status}>
@@ -216,7 +216,7 @@ function AdminLinkRequestsPage() {
                                 [request.id]: event.target.value,
                               }))
                             }
-                            className="w-full rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-xs outline-none dark:bg-[color:var(--bg-soft)]/80"
+                            className="w-full rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-xs outline-none dark:bg-white/[0.08]"
                           >
                             <option value="">Select user to link</option>
                             {users.map((user) => (

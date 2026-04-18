@@ -198,7 +198,7 @@ function BookingsPage() {
       <Card className="p-4 md:p-5">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div className="flex flex-1 flex-col gap-3 md:flex-row">
-            <label className="flex flex-1 items-center gap-2 rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 dark:bg-[color:var(--bg-soft)]/80">
+            <label className="flex flex-1 items-center gap-2 rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 dark:bg-white/[0.08]">
               <Search className="h-4 w-4 text-[color:var(--text-muted)]" />
               <input
                 value={query}
@@ -210,7 +210,7 @@ function BookingsPage() {
             <select
               value={statusFilter}
               onChange={(event) => setStatusFilter(event.target.value)}
-              className="rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none dark:bg-[color:var(--bg-soft)]/80"
+              className="rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none dark:bg-white/[0.08]"
             >
               <option value="ALL">All Status</option>
               {BOOKING_STATUSES.map((status) => (
@@ -317,7 +317,7 @@ function BookingsPage() {
                 name="userId"
                 value={form.userId}
                 onChange={handleInput}
-                className="w-full rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 pr-10 text-sm outline-none dark:bg-[color:var(--bg-soft)]/70"
+                className="w-full rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 pr-10 text-sm outline-none dark:bg-white/[0.08]"
               >
                 <option value="">Select user</option>
                 {users.map((user) => (
@@ -332,7 +332,7 @@ function BookingsPage() {
               <input
                 value={currentUser ? `${currentUser.name} (${currentUser.email})` : "Loading profile..."}
                 readOnly
-                className="w-full rounded-xl border border-[color:var(--border)] bg-white/60 px-3 py-2 text-sm outline-none dark:bg-[color:var(--bg-soft)]/60"
+                className="w-full rounded-xl border border-[color:var(--border)] bg-white/60 px-3 py-2 text-sm outline-none dark:bg-white/[0.06]"
               />
             </FormField>
           )}
@@ -342,7 +342,7 @@ function BookingsPage() {
               name="resourceId"
               value={form.resourceId}
               onChange={handleInput}
-              className="w-full rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 pr-10 text-sm outline-none dark:bg-[color:var(--bg-soft)]/70"
+              className="w-full rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 pr-10 text-sm outline-none dark:bg-white/[0.08]"
             >
               <option value="">Select resource</option>
               {resources.map((resource) => (
@@ -359,7 +359,7 @@ function BookingsPage() {
               name="startTime"
               value={form.startTime}
               onChange={handleInput}
-              className="w-full rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none dark:bg-[color:var(--bg-soft)]/70"
+              className="w-full rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none dark:bg-white/[0.08]"
             />
           </FormField>
 
@@ -369,7 +369,7 @@ function BookingsPage() {
               name="endTime"
               value={form.endTime}
               onChange={handleInput}
-              className="w-full rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none dark:bg-[color:var(--bg-soft)]/70"
+              className="w-full rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none dark:bg-white/[0.08]"
             />
           </FormField>
 
@@ -380,7 +380,7 @@ function BookingsPage() {
               onChange={handleInput}
               rows={4}
               placeholder="Explain why this booking is required"
-              className="w-full rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none dark:bg-[color:var(--bg-soft)]/70"
+              className="w-full rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none dark:bg-white/[0.08]"
             />
           </FormField>
         </form>

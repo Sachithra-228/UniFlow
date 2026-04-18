@@ -107,7 +107,7 @@ function NotificationsPage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <span className="rounded-xl border border-[color:var(--border)] bg-white/70 px-3 py-2 text-sm font-semibold dark:bg-[color:var(--bg-soft)]/80">
+            <span className="rounded-xl border border-[color:var(--border)] bg-white/70 px-3 py-2 text-sm font-semibold dark:bg-white/[0.08]">
               Unread: {unreadCount}
             </span>
             <Button
@@ -178,13 +178,13 @@ function NotificationsPage() {
         <div className="grid gap-3 md:grid-cols-2">
           <Link
             to={roleHome}
-            className="rounded-xl border border-[color:var(--border)] bg-white/70 px-4 py-3 text-sm font-semibold transition hover:bg-white dark:bg-[color:var(--bg-soft)]/80 dark:hover:bg-[color:var(--bg-soft)]"
+            className="rounded-xl border border-[color:var(--border)] bg-white/70 px-4 py-3 text-sm font-semibold transition hover:bg-white dark:bg-white/[0.08] dark:hover:bg-white/[0.12]"
           >
             Back to role dashboard
           </Link>
           <Link
             to="/tickets"
-            className="rounded-xl border border-[color:var(--border)] bg-white/70 px-4 py-3 text-sm font-semibold transition hover:bg-white dark:bg-[color:var(--bg-soft)]/80 dark:hover:bg-[color:var(--bg-soft)]"
+            className="rounded-xl border border-[color:var(--border)] bg-white/70 px-4 py-3 text-sm font-semibold transition hover:bg-white dark:bg-white/[0.08] dark:hover:bg-white/[0.12]"
           >
             Open ticket workspace
           </Link>

@@ -231,7 +231,7 @@ function AdminDashboardPage() {
           ) : roleBreakdown.length ? (
             <div className="mt-4 space-y-3">
               {roleBreakdown.map((item, index) => (
-                <div key={item.label} className="rounded-xl border border-[color:var(--border)] bg-white/65 p-3 dark:bg-[color:var(--bg-soft)]/80">
+                <div key={item.label} className="rounded-xl border border-[color:var(--border)] bg-white/65 p-3 dark:bg-white/[0.08]">
                   <div className="mb-1 flex items-center justify-between text-sm">
                     <span className="font-semibold">{item.label}</span>
                     <span className="text-[color:var(--text-muted)]">{item.value}</span>
@@ -376,7 +376,7 @@ function DonutChart({ data }) {
       </div>
       <div className="space-y-2">
         {data.map((item, index) => (
-          <div key={item.label} className="flex items-center justify-between rounded-lg border border-[color:var(--border)] bg-white/65 px-3 py-2 text-sm dark:bg-[color:var(--bg-soft)]/80">
+          <div key={item.label} className="flex items-center justify-between rounded-lg border border-[color:var(--border)] bg-white/65 px-3 py-2 text-sm dark:bg-white/[0.08]">
             <span className="inline-flex items-center gap-2">
               <span
                 className="h-2.5 w-2.5 rounded-full"
@@ -394,7 +394,7 @@ function DonutChart({ data }) {
 
 function BarChart({ data }) {
   return (
-    <div className="mt-4 grid grid-cols-7 items-end gap-3 rounded-xl border border-[color:var(--border)] bg-white/65 p-4 dark:bg-[color:var(--bg-soft)]/80">
+    <div className="mt-4 grid grid-cols-7 items-end gap-3 rounded-xl border border-[color:var(--border)] bg-white/65 p-4 dark:bg-white/[0.05]">
       {data.map((item, index) => (
         <div key={item.label} className="flex flex-col items-center gap-2">
           <span className="text-[11px] font-semibold text-[color:var(--text-muted)]">{item.value}</span>
@@ -426,7 +426,7 @@ function ShortcutCard({
   return (
     <Link
       to={to}
-      className="rounded-2xl border border-[color:var(--border)] bg-white/70 p-4 transition hover:bg-white dark:bg-[color:var(--bg-soft)]/80 dark:hover:bg-[color:var(--bg-soft)]"
+      className="rounded-2xl border border-[color:var(--border)] bg-white/70 p-4 transition hover:bg-white dark:bg-white/[0.08] dark:hover:bg-white/[0.12]"
     >
       <span className="inline-flex rounded-lg bg-[color:var(--brand-soft)] p-2 text-[color:var(--brand)]">
         <Icon className="h-4 w-4" />

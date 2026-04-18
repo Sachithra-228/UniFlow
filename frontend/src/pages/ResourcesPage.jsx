@@ -180,7 +180,7 @@ function ResourcesPage() {
       <Card className="p-4 md:p-5">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="grid flex-1 gap-3 md:grid-cols-[1.2fr_auto_auto]">
-            <label className="flex items-center gap-2 rounded-xl border border-[color:var(--border)] bg-white/70 px-3 py-2 dark:bg-[color:var(--bg-soft)]/80">
+            <label className="flex items-center gap-2 rounded-xl border border-[color:var(--border)] bg-white/70 px-3 py-2 dark:bg-white/[0.08]">
               <Search className="h-4 w-4 text-[color:var(--text-muted)]" />
               <input
                 value={query}
@@ -193,7 +193,7 @@ function ResourcesPage() {
             <select
               value={typeFilter}
               onChange={(event) => setTypeFilter(event.target.value)}
-              className="rounded-xl border border-[color:var(--border)] bg-white/70 px-3 py-2 text-sm outline-none dark:bg-[color:var(--bg-soft)]/80"
+              className="rounded-xl border border-[color:var(--border)] bg-white/70 px-3 py-2 text-sm outline-none dark:bg-white/[0.08]"
             >
               <option value="ALL">All Types</option>
               {RESOURCE_TYPES.map((item) => (
@@ -206,7 +206,7 @@ function ResourcesPage() {
             <select
               value={statusFilter}
               onChange={(event) => setStatusFilter(event.target.value)}
-              className="rounded-xl border border-[color:var(--border)] bg-white/70 px-3 py-2 text-sm outline-none dark:bg-[color:var(--bg-soft)]/80"
+              className="rounded-xl border border-[color:var(--border)] bg-white/70 px-3 py-2 text-sm outline-none dark:bg-white/[0.08]"
             >
               <option value="ALL">All Status</option>
               {RESOURCE_STATUSES.map((item) => (
@@ -285,7 +285,7 @@ function ResourcesPage() {
               value={form.name}
               onChange={handleInput}
               placeholder="E.g. Seminar Hall East"
-              className="w-full rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none dark:bg-[color:var(--bg-soft)]/70"
+              className="w-full rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none dark:bg-white/[0.08]"
             />
           </FormField>
 
@@ -294,7 +294,7 @@ function ResourcesPage() {
               name="type"
               value={form.type}
               onChange={handleInput}
-              className="w-full rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none dark:bg-[color:var(--bg-soft)]/70"
+              className="w-full rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none dark:bg-white/[0.08]"
             >
               {RESOURCE_TYPES.map((item) => (
                 <option key={item} value={item}>
@@ -311,7 +311,7 @@ function ResourcesPage() {
               value={form.capacity}
               onChange={handleInput}
               min={1}
-              className="w-full rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none dark:bg-[color:var(--bg-soft)]/70"
+              className="w-full rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none dark:bg-white/[0.08]"
             />
           </FormField>
 
@@ -320,7 +320,7 @@ function ResourcesPage() {
               name="status"
               value={form.status}
               onChange={handleInput}
-              className="w-full rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none dark:bg-[color:var(--bg-soft)]/70"
+              className="w-full rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none dark:bg-white/[0.08]"
             >
               {RESOURCE_STATUSES.map((item) => (
                 <option key={item} value={item}>
@@ -336,7 +336,7 @@ function ResourcesPage() {
               value={form.location}
               onChange={handleInput}
               placeholder="Building / Block / Floor"
-              className="w-full rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none dark:bg-[color:var(--bg-soft)]/70"
+              className="w-full rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none dark:bg-white/[0.08]"
             />
           </FormField>
         </form>
@@ -425,7 +425,7 @@ function ResourceCards({ resources, onEdit, onDelete }) {
   return (
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
       {resources.map((item) => (
-        <article key={item.id} className="rounded-2xl border border-[color:var(--border)] bg-white/65 p-4 dark:bg-[color:var(--bg-soft)]/75">
+        <article key={item.id} className="rounded-2xl border border-[color:var(--border)] bg-white/65 p-4 dark:bg-white/[0.06]">
           <div className="flex items-start justify-between gap-2">
             <h4 className="text-base font-semibold">{item.name}</h4>
             <Badge value={item.status} />

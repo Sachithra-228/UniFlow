@@ -5,7 +5,7 @@ const variants = {
   primary:
     "bg-[color:var(--brand)] text-white shadow-sm hover:brightness-110 active:brightness-95 dark:text-slate-900 dark:font-bold",
   secondary:
-    "bg-white/80 text-[color:var(--text)] border border-[color:var(--border)] hover:bg-white dark:bg-[color:var(--bg-soft)] dark:hover:bg-[color:var(--bg-soft)]/90",
+    "bg-white/80 text-[color:var(--text)] border border-[color:var(--border)] hover:bg-white dark:bg-white/[0.08] dark:hover:bg-white/[0.12]",
   ghost: "bg-transparent text-[color:var(--text)] hover:bg-black/5 dark:hover:bg-white/10",
   danger: "bg-rose-600 text-white hover:bg-rose-500",
 };

@@ -36,7 +36,7 @@ function LoginPage() {
         </div>
 
         {showEmailHelp ? (
-          <div className="mt-6 rounded-2xl border border-[color:var(--border)] bg-white/70 p-4 text-sm dark:bg-[color:var(--bg-soft)]/70">
+          <div className="mt-6 rounded-2xl border border-[color:var(--border)] bg-white/70 p-4 text-sm dark:bg-white/[0.05]">
             <div className="flex items-start gap-2">
               <ShieldCheck className="mt-0.5 h-4 w-4 text-[color:var(--brand)]" />
               <div className="space-y-1.5 text-[color:var(--text-muted)]">

@@ -466,7 +466,7 @@ function TicketsPage() {
 
       <Card className="p-4 md:p-5">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <label className="flex flex-1 items-center gap-2 rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 dark:bg-[color:var(--bg-soft)]/80">
+          <label className="flex flex-1 items-center gap-2 rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 dark:bg-white/[0.08]">
             <Search className="h-4 w-4 text-[color:var(--text-muted)]" />
             <input
               value={query}
@@ -478,7 +478,7 @@ function TicketsPage() {
           <select
             value={statusFilter}
             onChange={(event) => setStatusFilter(event.target.value)}
-            className="rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none dark:bg-[color:var(--bg-soft)]/80"
+            className="rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none dark:bg-white/[0.08]"
           >
             <option value="ALL">All Status</option>
             {TICKET_STATUSES.map((status) => (
@@ -536,7 +536,7 @@ function TicketsPage() {
 
                   <div className="flex min-w-[300px] flex-col gap-3">
                     {canAssignTechnician ? (
-                      <div className="rounded-xl border border-[color:var(--border)] bg-white/70 p-3 dark:bg-[color:var(--bg-soft)]/75">
+                      <div className="rounded-xl border border-[color:var(--border)] bg-white/70 p-3 dark:bg-white/[0.06]">
                         <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--text-muted)]">
                           Assign Technician
                         </p>
@@ -546,7 +546,7 @@ function TicketsPage() {
                             onChange={(event) =>
                               setAssignByTicket((current) => ({ ...current, [ticket.id]: event.target.value }))
                             }
-                            className="w-full rounded-xl border border-[color:var(--border)] bg-white/80 px-3 py-2 text-xs outline-none dark:bg-[color:var(--bg-soft)]"
+                            className="w-full rounded-xl border border-[color:var(--border)] bg-white/80 px-3 py-2 text-xs outline-none dark:bg-white/[0.05]"
                           >
                             <option value="">Select technician</option>
                             {technicians.map((technician) => (
@@ -567,7 +567,7 @@ function TicketsPage() {
                     ) : null}
 
                     {canUpdateStatus ? (
-                      <div className="rounded-xl border border-[color:var(--border)] bg-white/70 p-3 dark:bg-[color:var(--bg-soft)]/75">
+                      <div className="rounded-xl border border-[color:var(--border)] bg-white/70 p-3 dark:bg-white/[0.06]">
                         <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--text-muted)]">
                           Update Status
                         </p>
@@ -577,7 +577,7 @@ function TicketsPage() {
                             onChange={(event) =>
                               setStatusByTicket((current) => ({ ...current, [ticket.id]: event.target.value }))
                             }
-                            className="w-full rounded-xl border border-[color:var(--border)] bg-white/80 px-3 py-2 text-xs outline-none dark:bg-[color:var(--bg-soft)]"
+                            className="w-full rounded-xl border border-[color:var(--border)] bg-white/80 px-3 py-2 text-xs outline-none dark:bg-white/[0.05]"
                           >
                             <option value="">Select status</option>
                             {(role === "TECHNICIAN"
@@ -615,7 +615,7 @@ function TicketsPage() {
                     ) : null}
 
                     {canAddResolution ? (
-                      <div className="rounded-xl border border-[color:var(--border)] bg-white/70 p-3 dark:bg-[color:var(--bg-soft)]/75">
+                      <div className="rounded-xl border border-[color:var(--border)] bg-white/70 p-3 dark:bg-white/[0.06]">
                         <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--text-muted)]">
                           Resolution Notes
                         </p>
@@ -654,7 +654,7 @@ function TicketsPage() {
                           href={`${API_BASE_URL}${attachment.downloadUrl}`}
                           target="_blank"
                           rel="noreferrer"
-                          className="rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-xs font-semibold hover:underline dark:bg-[color:var(--bg-soft)]/80"
+                          className="rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-xs font-semibold hover:underline dark:bg-white/[0.08]"
                         >
                           {attachment.originalFileName}
                         </a>
@@ -663,7 +663,7 @@ function TicketsPage() {
                   </div>
                 ) : null}
 
-                <div className="mt-4 rounded-xl border border-[color:var(--border)] bg-white/60 p-3 dark:bg-[color:var(--bg-soft)]/70">
+                <div className="mt-4 rounded-xl border border-[color:var(--border)] bg-white/60 p-3 dark:bg-white/[0.05]">
                   <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--text-muted)]">
                     Comments
                   </p>
@@ -671,7 +671,7 @@ function TicketsPage() {
                     {(ticket.comments || []).map((comment) => {
                       const isEditing = editingComment?.commentId === comment.id;
                       return (
-                        <div key={comment.id} className="rounded-lg border border-[color:var(--border)] bg-white/80 p-2 text-xs dark:bg-[color:var(--bg-soft)]/80">
+                        <div key={comment.id} className="rounded-lg border border-[color:var(--border)] bg-white/80 p-2 text-xs dark:bg-white/[0.05]">
                           <div className="mb-1 flex items-center justify-between gap-3">
                             <p className="font-semibold">
                               {comment.authorName} · {formatDateTime(comment.createdAt)}
@@ -790,7 +790,7 @@ function TicketsPage() {
               name="resourceId"
               value={createForm.resourceId}
               onChange={handleCreateFormChange}
-              className="w-full rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none dark:bg-[color:var(--bg-soft)]/70"
+              className="w-full rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none dark:bg-white/[0.08]"
             >
               <option value="">No resource selected</option>
               {resources.map((resource) => (
@@ -807,7 +807,7 @@ function TicketsPage() {
               value={createForm.locationReference}
               onChange={handleCreateFormChange}
               placeholder="Building / floor / room"
-              className="w-full rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none dark:bg-[color:var(--bg-soft)]/70"
+              className="w-full rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none dark:bg-white/[0.08]"
             />
           </FormField>
 
@@ -816,7 +816,7 @@ function TicketsPage() {
               name="category"
               value={createForm.category}
               onChange={handleCreateFormChange}
-              className="w-full rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none dark:bg-[color:var(--bg-soft)]/70"
+              className="w-full rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none dark:bg-white/[0.08]"
             >
               {TICKET_CATEGORIES.map((category) => (
                 <option key={category} value={category}>
@@ -831,7 +831,7 @@ function TicketsPage() {
               name="priority"
               value={createForm.priority}
               onChange={handleCreateFormChange}
-              className="w-full rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none dark:bg-[color:var(--bg-soft)]/70"
+              className="w-full rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none dark:bg-white/[0.08]"
             >
               {TICKET_PRIORITIES.map((priority) => (
                 <option key={priority} value={priority}>
@@ -847,7 +847,7 @@ function TicketsPage() {
               value={createForm.preferredContactDetails}
               onChange={handleCreateFormChange}
               placeholder="Phone/email with preferred time"
-              className="w-full rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none dark:bg-[color:var(--bg-soft)]/70"
+              className="w-full rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none dark:bg-white/[0.08]"
             />
           </FormField>
 
@@ -857,7 +857,7 @@ function TicketsPage() {
               accept="image/png,image/jpeg,image/webp"
               multiple
               onChange={handleAttachmentChange}
-              className="w-full rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none file:mr-3 file:rounded-lg file:border-0 file:bg-[color:var(--brand-soft)] file:px-3 file:py-1.5 file:text-xs file:font-semibold dark:bg-[color:var(--bg-soft)]/70"
+              className="w-full rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none file:mr-3 file:rounded-lg file:border-0 file:bg-[color:var(--brand-soft)] file:px-3 file:py-1.5 file:text-xs file:font-semibold dark:bg-white/[0.08]"
             />
             <p className="mt-1 text-xs text-[color:var(--text-muted)]">
               {(createForm.attachments || []).length} selected
@@ -871,7 +871,7 @@ function TicketsPage() {
               value={createForm.description}
               onChange={handleCreateFormChange}
               placeholder="Describe the issue in detail"
-              className="w-full rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none dark:bg-[color:var(--bg-soft)]/70"
+              className="w-full rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none dark:bg-white/[0.08]"
             />
           </FormField>
         </form>

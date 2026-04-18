@@ -99,7 +99,7 @@ function Sidebar({ isMobileOpen, onClose, onCollapse, isCollapsed }) {
     <>
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 hidden border-r border-[color:var(--border)] bg-[color:var(--bg-soft)]/90 backdrop-blur-lg lg:block",
+          "fixed inset-y-0 left-0 z-50 hidden border-r border-[color:var(--border)] bg-white/90 backdrop-blur-lg lg:block dark:bg-slate-950/80",
           isCollapsed ? "w-[88px]" : "w-[268px]"
         )}
       >
@@ -114,7 +114,7 @@ function Sidebar({ isMobileOpen, onClose, onCollapse, isCollapsed }) {
       <div className={cn("fixed inset-0 z-[90] bg-slate-950/55 lg:hidden", isMobileOpen ? "block" : "hidden")} onClick={onClose} />
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-[95] w-[280px] border-r border-[color:var(--border)] bg-[color:var(--bg-soft)]/95 p-4 backdrop-blur-xl transition-transform duration-300 lg:hidden",
+          "fixed inset-y-0 left-0 z-[95] w-[280px] border-r border-[color:var(--border)] bg-white/95 p-4 backdrop-blur-xl transition-transform duration-300 lg:hidden dark:bg-slate-950/80",
           isMobileOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
@@ -153,7 +153,7 @@ function SidebarBody({ navItems, role, isCollapsed = false, isMobile = false, on
 
       <nav className="space-y-2">
         {!navItems.length ? (
-          <div className="rounded-xl border border-[color:var(--border)] bg-white/60 px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-[color:var(--text-muted)] dark:bg-[color:var(--bg-soft)]/70">
+          <div className="rounded-xl border border-[color:var(--border)] bg-white/60 px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-[color:var(--text-muted)] dark:bg-white/[0.05]">
             Loading menu...
           </div>
         ) : null}

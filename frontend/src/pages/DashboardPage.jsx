@@ -184,7 +184,7 @@ function DashboardPage() {
 
 function QuickAction({ to, icon: Icon, title, subtitle }) {
   return (
-    <Link to={to} className="flex items-center gap-3 rounded-xl border border-[color:var(--border)] bg-white/65 p-3 transition hover:bg-white dark:bg-[color:var(--bg-soft)]/70 dark:hover:bg-[color:var(--bg-soft)]">
+    <Link to={to} className="flex items-center gap-3 rounded-xl border border-[color:var(--border)] bg-white/65 p-3 transition hover:bg-white dark:bg-white/[0.08] dark:hover:bg-white/[0.12]">
       <span className="rounded-lg bg-[color:var(--brand-soft)] p-2 text-[color:var(--brand)]">
         <Icon className="h-4 w-4" />
       </span>

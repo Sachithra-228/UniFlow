@@ -1,13 +1,15 @@
 import axios from "axios";
-import { Plus, Search } from "lucide-react";
+import { Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   createBooking,
+  deleteBooking,
   fetchBookings,
   fetchProfile,
   fetchResources,
   fetchUsers,
+  updateBooking,
   updateBookingStatus,
 } from "../api/campusApi";
 import Badge from "../components/common/Badge";
@@ -18,7 +20,7 @@ import LoadingSkeleton from "../components/common/LoadingSkeleton";
 import Modal from "../components/common/Modal";
 import { useToast } from "../hooks/useToast";
 import { BOOKING_STATUSES } from "../utils/constants";
-import { formatDateTime, titleCase } from "../utils/format";
+import { formatDateTime, titleCase, toInputDateTime } from "../utils/format";
 import { normalizeRole } from "../utils/roles";
 
 const initialForm = {
@@ -28,6 +30,13 @@ const initialForm = {
   endTime: "",
   purpose: "",
 };
+
+function attachClientState(items, options = {}) {
+  return items.map((item) => ({
+    ...item,
+    _clientFallback: options.isFallback ?? item._clientFallback ?? false,
+  }));
+}
 
 function BookingsPage() {
   const [searchParams] = useSearchParams();
@@ -41,6 +50,8 @@ function BookingsPage() {
   const [openModal, setOpenModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [updatingBookingId, setUpdatingBookingId] = useState(null);
+  const [deletingBookingId, setDeletingBookingId] = useState(null);
+  const [editingBookingId, setEditingBookingId] = useState(null);
   const [form, setForm] = useState(initialForm);
   const [role, setRole] = useState("STUDENT");
   const { addToast } = useToast();
@@ -74,7 +85,7 @@ function BookingsPage() {
         const resolvedRole = normalizeRole(profileData?.data?.role) ?? "STUDENT";
         const profileUser = profileData?.data ?? null;
 
-        setBookings(bookingsData.items);
+        setBookings(attachClientState(bookingsData.items, { isFallback: bookingsData.isFallback }));
         setResources(resourcesData.items);
         setRole(resolvedRole);
         setCurrentUser(profileUser);
@@ -117,6 +128,41 @@ function BookingsPage() {
   }
 
   const canModerateBookings = role === "ADMIN" || role === "STAFF";
+  const canEditBooking = (booking) =>
+    booking.status === "PENDING" && (canModerateBookings || Number(currentUser?.id) === Number(booking.userId));
+  const canDeleteBooking = (booking) =>
+    canModerateBookings || Number(currentUser?.id) === Number(booking.userId);
+
+  function resetFormState() {
+    setEditingBookingId(null);
+    setForm(
+      canModerateBookings
+        ? initialForm
+        : { ...initialForm, userId: currentUser?.id ? String(currentUser.id) : "" }
+    );
+  }
+
+  function handleOpenCreateModal() {
+    resetFormState();
+    setOpenModal(true);
+  }
+
+  function handleOpenEditModal(booking) {
+    setEditingBookingId(booking.id);
+    setForm({
+      userId: String(booking.userId ?? currentUser?.id ?? ""),
+      resourceId: String(booking.resourceId ?? ""),
+      startTime: toInputDateTime(booking.startTime),
+      endTime: toInputDateTime(booking.endTime),
+      purpose: booking.purpose ?? "",
+    });
+    setOpenModal(true);
+  }
+
+  function handleCloseModal() {
+    setOpenModal(false);
+    resetFormState();
+  }
 
   async function handleStatusUpdate(bookingId, status) {
     setUpdatingBookingId(bookingId);
@@ -141,7 +187,49 @@ function BookingsPage() {
     }
   }
 
-  async function handleCreateBooking(event) {
+  async function handleDeleteBooking(booking) {
+    const confirmed = window.confirm(`Delete booking for ${booking.resourceName}?`);
+    if (!confirmed) {
+      return;
+    }
+
+    setDeletingBookingId(booking.id);
+    try {
+      const response = await deleteBooking(booking.id);
+      setBookings((current) => current.filter((item) => item.id !== booking.id));
+      addToast({
+        type: "success",
+        title: "Booking deleted",
+        message: response.isFallback ? "Removed in local fallback mode." : "Booking was deleted successfully.",
+      });
+    } catch (error) {
+      const errorMessage = error?.response?.data?.message;
+      const isMissingEndpoint = error?.response?.status === 404 && errorMessage === "Resource not found";
+      const isMissingBooking = error?.response?.status === 404 && String(errorMessage ?? "").includes("Booking not found");
+
+      if (booking._clientFallback || isMissingBooking) {
+        setBookings((current) => current.filter((item) => item.id !== booking.id));
+        addToast({
+          type: "success",
+          title: "Booking removed",
+          message: "Local booking entry was removed from the list.",
+        });
+        return;
+      }
+
+      addToast({
+        type: "error",
+        title: "Delete failed",
+        message: isMissingEndpoint
+          ? "Restart the backend server to enable booking delete changes."
+          : errorMessage || "Unable to delete this booking.",
+      });
+    } finally {
+      setDeletingBookingId(null);
+    }
+  }
+
+  async function handleSubmitBooking(event) {
     event.preventDefault();
     const resolvedUserId = canModerateBookings
       ? Number(form.userId)
@@ -160,14 +248,27 @@ function BookingsPage() {
         resourceId: Number(form.resourceId),
       };
 
+      if (editingBookingId) {
+        const response = await updateBooking(editingBookingId, payload);
+        const nextBooking = attachClientState([response.data], { isFallback: response.isFallback })[0];
+        setBookings((current) =>
+          current.map((booking) => (booking.id === editingBookingId ? nextBooking : booking))
+        );
+        handleCloseModal();
+        addToast({
+          type: "success",
+          title: "Booking updated",
+          message: response.isFallback ? "Updated in local fallback mode." : "Booking changes saved successfully.",
+        });
+        return;
+      }
+
       const response = await createBooking(payload);
-      setBookings((current) => [response.data, ...current]);
-      setForm(
-        canModerateBookings
-          ? initialForm
-          : { ...initialForm, userId: currentUser?.id ? String(currentUser.id) : "" }
-      );
-      setOpenModal(false);
+      setBookings((current) => [
+        ...attachClientState([response.data], { isFallback: response.isFallback }),
+        ...current,
+      ]);
+      handleCloseModal();
       addToast({
         type: "success",
         title: "Booking submitted",
@@ -185,8 +286,8 @@ function BookingsPage() {
 
       addToast({
         type: "error",
-        title: "Booking failed",
-        message: error?.response?.data?.message || "Could not create booking request.",
+        title: editingBookingId ? "Booking update failed" : "Booking failed",
+        message: error?.response?.data?.message || (editingBookingId ? "Could not update booking request." : "Could not create booking request."),
       });
     } finally {
       setSubmitting(false);
@@ -221,7 +322,7 @@ function BookingsPage() {
             </select>
           </div>
 
-          <Button onClick={() => setOpenModal(true)}>
+          <Button onClick={handleOpenCreateModal}>
             <Plus className="h-4 w-4" />
             Create Booking
           </Button>
@@ -248,7 +349,7 @@ function BookingsPage() {
                   <th className="pb-3">End</th>
                   <th className="pb-3">Purpose</th>
                   <th className="pb-3">Status</th>
-                  {canModerateBookings ? <th className="pb-3">Actions</th> : null}
+                  {filteredBookings.some((item) => canModerateBookings || canEditBooking(item) || canDeleteBooking(item)) ? <th className="pb-3">Actions</th> : null}
                 </tr>
               </thead>
               <tbody className="divide-y divide-[color:var(--border)]">
@@ -262,29 +363,53 @@ function BookingsPage() {
                     <td className="py-3">
                       <Badge value={item.status} />
                     </td>
-                    {canModerateBookings ? (
+                    {canModerateBookings || canDeleteBooking(item) ? (
                       <td className="py-3">
-                        {item.status === "PENDING" ? (
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              loading={updatingBookingId === item.id}
-                              onClick={() => handleStatusUpdate(item.id, "APPROVED")}
-                            >
-                              Approve
-                            </Button>
+                        <div className="flex flex-wrap gap-2">
+                          {canModerateBookings && item.status === "PENDING" ? (
+                            <>
+                              <Button
+                                size="sm"
+                                loading={updatingBookingId === item.id}
+                                onClick={() => handleStatusUpdate(item.id, "APPROVED")}
+                              >
+                                Approve
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                loading={updatingBookingId === item.id}
+                                onClick={() => handleStatusUpdate(item.id, "REJECTED")}
+                              >
+                                Reject
+                              </Button>
+                            </>
+                          ) : null}
+                          {canEditBooking(item) ? (
                             <Button
                               size="sm"
                               variant="secondary"
-                              loading={updatingBookingId === item.id}
-                              onClick={() => handleStatusUpdate(item.id, "REJECTED")}
+                              onClick={() => handleOpenEditModal(item)}
                             >
-                              Reject
+                              <Pencil className="h-4 w-4" />
+                              Edit
                             </Button>
-                          </div>
-                        ) : (
-                          <span className="text-xs text-[color:var(--text-muted)]">No action</span>
-                        )}
+                          ) : null}
+                          {canDeleteBooking(item) ? (
+                            <Button
+                              size="sm"
+                              variant="danger"
+                              loading={deletingBookingId === item.id}
+                              onClick={() => handleDeleteBooking(item)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              Delete
+                            </Button>
+                          ) : null}
+                          {!canModerateBookings && !canDeleteBooking(item) ? (
+                            <span className="text-xs text-[color:var(--text-muted)]">No action</span>
+                          ) : null}
+                        </div>
                       </td>
                     ) : null}
                   </tr>
@@ -297,20 +422,20 @@ function BookingsPage() {
 
       <Modal
         isOpen={openModal}
-        onClose={() => setOpenModal(false)}
-        title="Create Booking Request"
+        onClose={handleCloseModal}
+        title={editingBookingId ? "Edit Booking Request" : "Create Booking Request"}
         footer={
           <div className="flex justify-end gap-2">
-            <Button variant="secondary" onClick={() => setOpenModal(false)}>
+            <Button variant="secondary" onClick={handleCloseModal}>
               Cancel
             </Button>
             <Button form="booking-form" type="submit" loading={submitting}>
-              Submit Booking
+              {editingBookingId ? "Save Changes" : "Submit Booking"}
             </Button>
           </div>
         }
       >
-        <form id="booking-form" className="grid gap-4 lg:grid-cols-2" onSubmit={handleCreateBooking}>
+        <form id="booking-form" className="grid gap-4 lg:grid-cols-2" onSubmit={handleSubmitBooking}>
           {canModerateBookings ? (
             <FormField label="User">
               <select

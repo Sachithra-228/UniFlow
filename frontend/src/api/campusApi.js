@@ -2,10 +2,12 @@ import api, { API_BASE_URL } from "./client";
 import {
   addMockBooking,
   addMockResource,
+  deleteMockBooking,
   getMockBookings,
   getMockProfile,
   getMockResources,
   getMockUsers,
+  updateMockBooking,
 } from "../utils/mockData";
 
 function toPageShape(items, page = 0, size = 10) {
@@ -116,6 +118,31 @@ export async function createBooking(payload) {
   } catch (error) {
     if (isServiceUnavailable(error)) {
       return { data: addMockBooking(payload), isFallback: true };
+    }
+    throw error;
+  }
+}
+
+export async function updateBooking(id, payload) {
+  try {
+    const response = await api.put(`/api/bookings/${id}`, payload);
+    return { data: response.data, isFallback: false };
+  } catch (error) {
+    if (isServiceUnavailable(error)) {
+      return { data: updateMockBooking(id, payload), isFallback: true };
+    }
+    throw error;
+  }
+}
+
+export async function deleteBooking(id) {
+  try {
+    await api.delete(`/api/bookings/${id}`);
+    return { isFallback: false };
+  } catch (error) {
+    if (isServiceUnavailable(error)) {
+      deleteMockBooking(id);
+      return { isFallback: true };
     }
     throw error;
   }

@@ -34,4 +34,12 @@ public interface TicketRepository extends JpaRepository<Ticket, Long> {
     Page<Ticket> findByStatus(TicketStatus status, Pageable pageable);
 
     Optional<Ticket> findByIdAndCreatedById(Long id, Long createdById);
+
+    @Query("""
+            SELECT t
+            FROM Ticket t
+            WHERE t.assignedTechnician.id = :technicianId
+               OR (t.assignedTechnician IS NULL AND t.status = com.smartcampus.backend.entity.TicketStatus.OPEN)
+            """)
+    Page<Ticket> findVisibleToTechnician(@Param("technicianId") Long technicianId, Pageable pageable);
 }

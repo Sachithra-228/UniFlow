@@ -13,6 +13,10 @@ import java.util.List;
 @Builder
 public class TicketResponseDTO {
     private Long id;
+    private Long bookingId;
+    private LocalDateTime bookingStartTime;
+    private LocalDateTime bookingEndTime;
+    private String bookingPurpose;
     private Long resourceId;
     private String resourceName;
     private String locationReference;

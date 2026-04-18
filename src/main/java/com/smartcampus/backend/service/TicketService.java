@@ -10,6 +10,7 @@ import com.smartcampus.backend.dto.TicketResolutionRequestDTO;
 import com.smartcampus.backend.dto.TicketResponseDTO;
 import com.smartcampus.backend.dto.TicketStatusUpdateRequestDTO;
 import com.smartcampus.backend.entity.Resource;
+import com.smartcampus.backend.entity.Booking;
 import com.smartcampus.backend.entity.Ticket;
 import com.smartcampus.backend.entity.TicketAttachment;
 import com.smartcampus.backend.entity.TicketComment;
@@ -18,6 +19,7 @@ import com.smartcampus.backend.entity.User;
 import com.smartcampus.backend.entity.UserRole;
 import com.smartcampus.backend.exception.ResourceNotFoundException;
 import com.smartcampus.backend.repository.ResourceRepository;
+import com.smartcampus.backend.repository.BookingRepository;
 import com.smartcampus.backend.repository.TicketAttachmentRepository;
 import com.smartcampus.backend.repository.TicketCommentRepository;
 import com.smartcampus.backend.repository.TicketRepository;
@@ -44,6 +46,7 @@ public class TicketService {
     private final TicketAttachmentRepository ticketAttachmentRepository;
     private final UserRepository userRepository;
     private final ResourceRepository resourceRepository;
+    private final BookingRepository bookingRepository;
     private final CurrentUserService currentUserService;
     private final TicketAttachmentStorageService ticketAttachmentStorageService;
     private final NotificationService notificationService;
@@ -55,12 +58,26 @@ public class TicketService {
 
         validateResourceOrLocation(requestDTO);
 
+        Booking booking = null;
+        if (requestDTO.getBookingId() != null) {
+            booking = bookingRepository.findById(requestDTO.getBookingId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Booking", requestDTO.getBookingId()));
+
+            if (!currentUserService.isAdmin(actor) && !booking.getUser().getId().equals(actor.getId())) {
+                throw new AccessDeniedException("You can only link your own bookings to tickets");
+            }
+        }
+
         Resource resource = null;
-        if (requestDTO.getResourceId() != null) {
+        if (booking != null) {
+            resource = booking.getResource();
+        } else if (requestDTO.getResourceId() != null) {
             resource = resourceRepository.findById(requestDTO.getResourceId())
                     .orElseThrow(() -> new ResourceNotFoundException("Resource", requestDTO.getResourceId()));
         }
-        String normalizedLocation = normalizeOptional(requestDTO.getLocationReference());
+        String normalizedLocation = booking != null
+                ? normalizeOptional(booking.getResource().getLocation())
+                : normalizeOptional(requestDTO.getLocationReference());
         if (normalizedLocation == null && resource != null) {
             normalizedLocation = normalizeOptional(resource.getLocation());
         }
@@ -69,6 +86,7 @@ public class TicketService {
         }
 
         Ticket ticket = Ticket.builder()
+                .booking(booking)
                 .resource(resource)
                 .locationReference(normalizedLocation)
                 .legacyLocation(normalizedLocation)
@@ -112,7 +130,7 @@ public class TicketService {
             return ticketRepository.findAll(pageable).map(this::toResponse);
         }
 
-        return ticketRepository.findByAssignedTechnicianId(actor.getId(), pageable).map(this::toResponse);
+        return ticketRepository.findVisibleToTechnician(actor.getId(), pageable).map(this::toResponse);
     }
 
     @Transactional(readOnly = true)
@@ -146,6 +164,37 @@ public class TicketService {
         }
         Ticket saved = ticketRepository.save(ticket);
         notificationService.notifyTicketAssigned(saved);
+        return toResponse(saved);
+    }
+
+    @Transactional
+    public TicketResponseDTO claimTicket(OidcUser oidcUser, Long ticketId) {
+        User actor = currentUserService.requireCurrentUser(oidcUser);
+        currentUserService.requireAnyRole(actor, UserRole.TECHNICIAN);
+
+        Ticket ticket = getTicketOrThrow(ticketId);
+        if (ticket.getAssignedTechnician() != null && !ticket.getAssignedTechnician().getId().equals(actor.getId())) {
+            throw new AccessDeniedException("Ticket is already assigned to another technician");
+        }
+        if (ticket.getStatus() != TicketStatus.OPEN && ticket.getAssignedTechnician() == null) {
+            throw new IllegalStateException("Only open tickets can be claimed");
+        }
+
+        Ticket previous = Ticket.builder()
+                .id(ticket.getId())
+                .assignedTechnician(ticket.getAssignedTechnician())
+                .build();
+
+        ticket.setAssignedTechnician(actor);
+        if (ticket.getStatus() == TicketStatus.OPEN) {
+            ticket.setStatus(TicketStatus.IN_PROGRESS);
+        }
+        ticket.setUpdatedAt(LocalDateTime.now());
+
+        Ticket saved = ticketRepository.save(ticket);
+        if (previous.getAssignedTechnician() == null) {
+            notificationService.notifyTicketAssigned(saved);
+        }
         return toResponse(saved);
     }
 
@@ -275,6 +324,9 @@ public class TicketService {
     }
 
     private void validateResourceOrLocation(TicketCreateRequestDTO requestDTO) {
+        if (requestDTO.getBookingId() != null) {
+            return;
+        }
         boolean hasResource = requestDTO.getResourceId() != null;
         boolean hasLocation = requestDTO.getLocationReference() != null && !requestDTO.getLocationReference().isBlank();
         if (!hasResource && !hasLocation) {
@@ -371,6 +423,10 @@ public class TicketService {
 
         return TicketResponseDTO.builder()
                 .id(ticket.getId())
+                .bookingId(ticket.getBooking() == null ? null : ticket.getBooking().getId())
+                .bookingStartTime(ticket.getBooking() == null ? null : ticket.getBooking().getStartTime())
+                .bookingEndTime(ticket.getBooking() == null ? null : ticket.getBooking().getEndTime())
+                .bookingPurpose(ticket.getBooking() == null ? null : ticket.getBooking().getPurpose())
                 .resourceId(ticket.getResource() == null ? null : ticket.getResource().getId())
                 .resourceName(ticket.getResource() == null ? null : ticket.getResource().getName())
                 .locationReference(resolvedLocation)

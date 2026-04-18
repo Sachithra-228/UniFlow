@@ -21,16 +21,47 @@ function TechnicianDashboardPage() {
     async function loadData() {
       setLoading(true);
       try {
-        const [profileResponse, bookingsResponse, ticketResponse] = await Promise.all([
+        const [profileResult, bookingsResult, ticketsResult] = await Promise.allSettled([
           fetchProfile(),
           fetchBookings({ page: 0, size: 300 }),
           fetchAssignedTickets({ page: 0, size: 300 }),
         ]);
-        setRole(normalizeRole(profileResponse?.data?.role));
-        setBookings(bookingsResponse.items);
-        setAssignedTickets(ticketResponse.items);
 
-        if (bookingsResponse.isFallback || profileResponse.isFallback || ticketResponse.isFallback) {
+        if (profileResult.status === "fulfilled") {
+          setRole(normalizeRole(profileResult.value?.data?.role));
+        }
+
+        if (bookingsResult.status === "fulfilled") {
+          setBookings(bookingsResult.value.items);
+        } else {
+          setBookings([]);
+        }
+
+        if (ticketsResult.status === "fulfilled") {
+          setAssignedTickets(ticketsResult.value.items);
+        } else {
+          setAssignedTickets([]);
+          addToast({
+            type: "error",
+            title: "Assigned tickets unavailable",
+            message: ticketsResult.reason?.response?.data?.message || "Ticket queue could not be loaded right now.",
+          });
+        }
+
+        if (profileResult.status === "rejected") {
+          throw profileResult.reason;
+        }
+
+        if (bookingsResult.status === "rejected") {
+          throw bookingsResult.reason;
+        }
+
+        if (
+          profileResult.status === "fulfilled" &&
+          bookingsResult.status === "fulfilled" &&
+          ticketsResult.status === "fulfilled" &&
+          (bookingsResult.value.isFallback || profileResult.value.isFallback || ticketsResult.value.isFallback)
+        ) {
           addToast({
             type: "info",
             title: "Fallback mode active",

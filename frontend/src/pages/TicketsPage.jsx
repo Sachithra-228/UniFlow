@@ -5,6 +5,7 @@ import {
   Plus,
   Search,
   ShieldCheck,
+  UserPlus,
   UserCircle2,
   Wrench,
 } from "lucide-react";
@@ -14,8 +15,10 @@ import {
   addTicketComment,
   addTicketResolutionNotes,
   assignTicket,
+  claimTicket,
   createTicket,
   deleteTicketComment,
+  fetchBookings,
   fetchAdminTickets,
   fetchAssignedTickets,
   fetchMyTickets,
@@ -38,6 +41,7 @@ import { normalizeRole } from "../utils/roles";
 import { TICKET_CATEGORIES, TICKET_PRIORITIES, TICKET_STATUSES } from "../utils/constants";
 
 const initialCreateForm = {
+  bookingId: "",
   resourceId: "",
   locationReference: "",
   category: "HARDWARE",
@@ -53,6 +57,7 @@ function TicketsPage() {
   const [role, setRole] = useState(null);
   const [tickets, setTickets] = useState([]);
   const [resources, setResources] = useState([]);
+  const [bookings, setBookings] = useState([]);
   const [technicians, setTechnicians] = useState([]);
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [query, setQuery] = useState("");
@@ -70,6 +75,7 @@ function TicketsPage() {
 
   const canCreateTicket = role === "STUDENT" || role === "STAFF";
   const canAssignTechnician = role === "ADMIN";
+  const canClaimTicket = role === "TECHNICIAN";
   const canUpdateStatus = role === "TECHNICIAN" || role === "ADMIN";
   const canAddResolution = role === "TECHNICIAN" || role === "ADMIN";
 
@@ -82,7 +88,7 @@ function TicketsPage() {
         setProfile(profileResponse.data);
         setRole(resolvedRole);
 
-        const requests = [fetchResources({ page: 0, size: 300 })];
+        const requests = [fetchResources({ page: 0, size: 300 }), fetchBookings({ page: 0, size: 300 })];
         if (resolvedRole === "ADMIN") {
           requests.push(fetchAdminTickets({ page: 0, size: 300 }));
           requests.push(fetchUsers({ page: 0, size: 300 }));
@@ -94,13 +100,15 @@ function TicketsPage() {
 
         const responses = await Promise.all(requests);
         const resourceResponse = responses[0];
-        const ticketResponse = responses[1];
+        const bookingsResponse = responses[1];
+        const ticketResponse = responses[2];
 
         setResources(resourceResponse.items);
+        setBookings(bookingsResponse.items);
         setTickets(ticketResponse.items);
 
         if (resolvedRole === "ADMIN") {
-          const usersResponse = responses[2];
+          const usersResponse = responses[3];
           setTechnicians(usersResponse.items.filter((user) => normalizeRole(user.role) === "TECHNICIAN"));
         }
       } catch (error) {
@@ -150,13 +158,40 @@ function TicketsPage() {
     };
   }, [tickets]);
 
+  const availableBookings = useMemo(() => {
+    const profileId = Number(profile?.id);
+    return bookings
+      .filter((booking) => {
+        if (!profileId) return false;
+        return Number(booking.userId) === profileId && booking.status !== "REJECTED" && booking.status !== "CANCELLED";
+      })
+      .sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
+  }, [bookings, profile?.id]);
+
+  const selectedBooking = useMemo(
+    () => availableBookings.find((booking) => Number(booking.id) === Number(createForm.bookingId)) ?? null,
+    [availableBookings, createForm.bookingId]
+  );
+
   function setTicket(updatedTicket) {
     setTickets((current) => current.map((ticket) => (ticket.id === updatedTicket.id ? updatedTicket : ticket)));
   }
 
   function handleCreateFormChange(event) {
     const { name, value } = event.target;
-    setCreateForm((current) => ({ ...current, [name]: value }));
+    setCreateForm((current) => {
+      if (name === "bookingId") {
+        const nextBooking = availableBookings.find((booking) => Number(booking.id) === Number(value)) ?? null;
+        return {
+          ...current,
+          bookingId: value,
+          resourceId: nextBooking?.resourceId ? String(nextBooking.resourceId) : current.resourceId,
+          locationReference: nextBooking ? "" : current.locationReference,
+        };
+      }
+
+      return { ...current, [name]: value };
+    });
   }
 
   function handleAttachmentChange(event) {
@@ -197,6 +232,9 @@ function TicketsPage() {
     setSubmittingCreate(true);
     try {
       const formData = new FormData();
+      if (createForm.bookingId) {
+        formData.append("bookingId", createForm.bookingId);
+      }
       if (createForm.resourceId) {
         formData.append("resourceId", createForm.resourceId);
       }
@@ -258,6 +296,28 @@ function TicketsPage() {
         type: "error",
         title: "Assign failed",
         message: error?.response?.data?.message || "Failed to assign technician.",
+      });
+    } finally {
+      setBusyKey("");
+    }
+  }
+
+  async function handleClaimTicket(ticketId) {
+    const key = `claim-${ticketId}`;
+    setBusyKey(key);
+    try {
+      const response = await claimTicket(ticketId);
+      setTicket(response.data);
+      addToast({
+        type: "success",
+        title: "Ticket claimed",
+        message: "Ticket was assigned to your technician account.",
+      });
+    } catch (error) {
+      addToast({
+        type: "error",
+        title: "Claim failed",
+        message: error?.response?.data?.message || "Unable to claim this ticket.",
       });
     } finally {
       setBusyKey("");
@@ -494,7 +554,11 @@ function TicketsPage() {
         <Card className="p-6">
           <EmptyState
             title="No tickets found"
-            description="Create tickets or adjust your filters to view matching records."
+            description={
+              role === "TECHNICIAN"
+                ? "No assigned or open tickets are available right now."
+                : "Create tickets or adjust your filters to view matching records."
+            }
           />
         </Card>
       ) : (
@@ -515,6 +579,7 @@ function TicketsPage() {
                     </div>
                     <p className="text-sm">{ticket.description}</p>
                     <div className="flex flex-wrap gap-4 text-xs text-[color:var(--text-muted)]">
+                      {ticket.bookingId ? <span>Booking: #{ticket.bookingId}</span> : null}
                       <span>Created: {formatDateTime(ticket.createdAt)}</span>
                       <span>By: {ticket.createdByName}</span>
                       <span>Contact: {ticket.preferredContactDetails}</span>
@@ -534,7 +599,23 @@ function TicketsPage() {
                     ) : null}
                   </div>
 
-                  <div className="flex min-w-[300px] flex-col gap-3">
+                    <div className="flex min-w-[300px] flex-col gap-3">
+                    {canClaimTicket && !ticket.assignedTechnicianId && ticket.status === "OPEN" ? (
+                      <div className="rounded-xl border border-[color:var(--border)] bg-white/70 p-3 dark:bg-[color:var(--bg-soft)]/75">
+                        <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--text-muted)]">
+                          Available Queue
+                        </p>
+                        <Button
+                          size="sm"
+                          loading={busyKey === `claim-${ticket.id}`}
+                          onClick={() => handleClaimTicket(ticket.id)}
+                        >
+                          <UserPlus className="h-4 w-4" />
+                          Claim Ticket
+                        </Button>
+                      </div>
+                    ) : null}
+
                     {canAssignTechnician ? (
                       <div className="rounded-xl border border-[color:var(--border)] bg-white/70 p-3 dark:bg-[color:var(--bg-soft)]/75">
                         <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--text-muted)]">
@@ -799,6 +880,27 @@ function TicketsPage() {
                 </option>
               ))}
             </select>
+          </FormField>
+
+          <FormField label="Related Booking (Optional)">
+            <select
+              name="bookingId"
+              value={createForm.bookingId}
+              onChange={handleCreateFormChange}
+              className="w-full rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none dark:bg-[color:var(--bg-soft)]/70"
+            >
+              <option value="">No booking selected</option>
+              {availableBookings.map((booking) => (
+                <option key={booking.id} value={booking.id}>
+                  #{booking.id} - {booking.resourceName} - {formatDateTime(booking.startTime)}
+                </option>
+              ))}
+            </select>
+            {selectedBooking ? (
+              <p className="mt-1 text-xs text-[color:var(--text-muted)]">
+                Linked booking resource: {selectedBooking.resourceName} | Purpose: {selectedBooking.purpose || "Not set"}
+              </p>
+            ) : null}
           </FormField>
 
           <FormField label="Location (Optional)">

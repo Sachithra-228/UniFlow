@@ -62,6 +62,14 @@ public class TicketController {
         return ticketService.listAssignedTickets(oidcUser, pageable);
     }
 
+    @PatchMapping("/{id}/claim")
+    public TicketResponseDTO claimTicket(
+            @AuthenticationPrincipal OidcUser oidcUser,
+            @PathVariable Long id
+    ) {
+        return ticketService.claimTicket(oidcUser, id);
+    }
+
     @PatchMapping("/{id}/status")
     public TicketResponseDTO updateStatus(
             @AuthenticationPrincipal OidcUser oidcUser,

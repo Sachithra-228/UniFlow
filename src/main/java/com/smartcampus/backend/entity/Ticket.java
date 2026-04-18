@@ -37,6 +37,10 @@ public class Ticket {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "booking_id")
+    private Booking booking;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "resource_id")
     private Resource resource;
 

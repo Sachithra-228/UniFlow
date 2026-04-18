@@ -14,6 +14,8 @@ import java.util.List;
 @Data
 public class TicketCreateRequestDTO {
 
+    private Long bookingId;
+
     private Long resourceId;
 
     @Size(max = 255)

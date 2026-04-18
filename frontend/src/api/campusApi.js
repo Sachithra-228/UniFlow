@@ -220,6 +220,11 @@ export async function assignTicket(ticketId, payload) {
   return { data: response.data };
 }
 
+export async function claimTicket(ticketId) {
+  const response = await api.patch(`/api/tickets/${ticketId}/claim`);
+  return { data: response.data };
+}
+
 export async function updateTicketStatus(ticketId, payload) {
   const response = await api.patch(`/api/tickets/${ticketId}/status`, payload);
   return { data: response.data };

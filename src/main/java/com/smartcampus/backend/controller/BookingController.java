@@ -13,10 +13,12 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -52,5 +54,23 @@ public class BookingController {
             @Valid @RequestBody BookingStatusUpdateRequestDTO requestDTO
     ) {
         return bookingService.updateBookingStatus(oidcUser, id, requestDTO);
+    }
+
+    @PutMapping("/{id}")
+    public BookingResponseDTO updateBooking(
+            @AuthenticationPrincipal OidcUser oidcUser,
+            @PathVariable Long id,
+            @Valid @RequestBody BookingRequestDTO requestDTO
+    ) {
+        return bookingService.updateBooking(oidcUser, id, requestDTO);
+    }
+
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteBooking(
+            @AuthenticationPrincipal OidcUser oidcUser,
+            @PathVariable Long id
+    ) {
+        bookingService.deleteBooking(oidcUser, id);
     }
 }

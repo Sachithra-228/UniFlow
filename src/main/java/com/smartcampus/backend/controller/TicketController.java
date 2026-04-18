@@ -7,6 +7,7 @@ import com.smartcampus.backend.dto.TicketCreateRequestDTO;
 import com.smartcampus.backend.dto.TicketResolutionRequestDTO;
 import com.smartcampus.backend.dto.TicketResponseDTO;
 import com.smartcampus.backend.dto.TicketStatusUpdateRequestDTO;
+import com.smartcampus.backend.dto.TicketUpdateRequestDTO;
 import com.smartcampus.backend.service.TicketService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +19,7 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -69,6 +71,24 @@ public class TicketController {
             @Valid @RequestBody TicketStatusUpdateRequestDTO requestDTO
     ) {
         return ticketService.updateStatus(oidcUser, id, requestDTO);
+    }
+
+    @PutMapping("/{id}")
+    public TicketResponseDTO updateTicket(
+            @AuthenticationPrincipal OidcUser oidcUser,
+            @PathVariable Long id,
+            @Valid @RequestBody TicketUpdateRequestDTO requestDTO
+    ) {
+        return ticketService.updateTicket(oidcUser, id, requestDTO);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteTicket(
+            @AuthenticationPrincipal OidcUser oidcUser,
+            @PathVariable Long id
+    ) {
+        ticketService.deleteTicket(oidcUser, id);
+        return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
     }
 
     @PatchMapping("/{id}/resolution")

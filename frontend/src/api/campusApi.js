@@ -1,11 +1,13 @@
 import api, { API_BASE_URL } from "./client";
 import {
   addMockBooking,
+  deleteMockBooking,
   addMockResource,
   getMockBookings,
   getMockProfile,
   getMockResources,
   getMockUsers,
+  updateMockBooking,
 } from "../utils/mockData";
 
 function toPageShape(items, page = 0, size = 10) {
@@ -121,6 +123,38 @@ export async function createBooking(payload) {
   }
 }
 
+export async function updateBooking(id, payload) {
+  try {
+    const response = await api.put(`/api/bookings/${id}`, payload);
+    return { data: response.data, isFallback: false };
+  } catch (error) {
+    if (isServiceUnavailable(error)) {
+      const updated = updateMockBooking(id, payload);
+      if (!updated) {
+        throw new Error("Booking not found");
+      }
+      return { data: updated, isFallback: true };
+    }
+    throw error;
+  }
+}
+
+export async function deleteBooking(id) {
+  try {
+    await api.delete(`/api/bookings/${id}`);
+    return { isFallback: false };
+  } catch (error) {
+    if (isServiceUnavailable(error)) {
+      const deleted = deleteMockBooking(id);
+      if (!deleted) {
+        throw new Error("Booking not found");
+      }
+      return { isFallback: true };
+    }
+    throw error;
+  }
+}
+
 export async function fetchProfile() {
   try {
     const response = await api.get("/profile");
@@ -186,6 +220,15 @@ export async function createTicket(formData) {
     },
   });
   return { data: response.data };
+}
+
+export async function updateTicket(ticketId, payload) {
+  const response = await api.put(`/api/tickets/${ticketId}`, payload);
+  return { data: response.data };
+}
+
+export async function deleteTicket(ticketId) {
+  await api.delete(`/api/tickets/${ticketId}`);
 }
 
 export async function assignTicket(ticketId, payload) {

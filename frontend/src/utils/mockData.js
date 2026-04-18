@@ -116,3 +116,35 @@ export function addMockBooking(payload) {
   mockBookings = [newBooking, ...mockBookings];
   return newBooking;
 }
+
+export function updateMockBooking(id, payload) {
+  const bookingId = Number(id);
+  const user = mockUsers.find((item) => item.id === Number(payload.userId));
+  const resource = mockResources.find((item) => item.id === Number(payload.resourceId));
+
+  let updatedBooking = null;
+  mockBookings = mockBookings.map((booking) => {
+    if (booking.id !== bookingId) {
+      return booking;
+    }
+
+    updatedBooking = {
+      ...booking,
+      ...payload,
+      userId: Number(payload.userId),
+      resourceId: Number(payload.resourceId),
+      userName: user?.name ?? booking.userName,
+      resourceName: resource?.name ?? booking.resourceName,
+    };
+    return updatedBooking;
+  });
+
+  return updatedBooking;
+}
+
+export function deleteMockBooking(id) {
+  const bookingId = Number(id);
+  const before = mockBookings.length;
+  mockBookings = mockBookings.filter((booking) => booking.id !== bookingId);
+  return before !== mockBookings.length;
+}

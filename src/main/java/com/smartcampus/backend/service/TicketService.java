@@ -9,6 +9,7 @@ import com.smartcampus.backend.dto.TicketCreateRequestDTO;
 import com.smartcampus.backend.dto.TicketResolutionRequestDTO;
 import com.smartcampus.backend.dto.TicketResponseDTO;
 import com.smartcampus.backend.dto.TicketStatusUpdateRequestDTO;
+import com.smartcampus.backend.dto.TicketUpdateRequestDTO;
 import com.smartcampus.backend.entity.Resource;
 import com.smartcampus.backend.entity.Ticket;
 import com.smartcampus.backend.entity.TicketAttachment;
@@ -178,6 +179,49 @@ public class TicketService {
     }
 
     @Transactional
+    public TicketResponseDTO updateTicket(OidcUser oidcUser, Long ticketId, TicketUpdateRequestDTO requestDTO) {
+        User actor = currentUserService.requireCurrentUser(oidcUser);
+        Ticket ticket = getTicketOrThrow(ticketId);
+        validateCanModifyTicket(ticket, actor);
+        validateResourceOrLocation(requestDTO.getResourceId(), requestDTO.getLocationReference());
+
+        Resource resource = null;
+        if (requestDTO.getResourceId() != null) {
+            resource = resourceRepository.findById(requestDTO.getResourceId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Resource", requestDTO.getResourceId()));
+        }
+
+        String normalizedLocation = normalizeOptional(requestDTO.getLocationReference());
+        if (normalizedLocation == null && resource != null) {
+            normalizedLocation = normalizeOptional(resource.getLocation());
+        }
+        if (normalizedLocation == null) {
+            throw new IllegalArgumentException("Location is required when selected resource has no location.");
+        }
+
+        ticket.setResource(resource);
+        ticket.setLocationReference(normalizedLocation);
+        ticket.setLegacyLocation(normalizedLocation);
+        ticket.setCategory(requestDTO.getCategory());
+        ticket.setDescription(requestDTO.getDescription().trim());
+        ticket.setPriority(requestDTO.getPriority());
+        ticket.setPreferredContactDetails(requestDTO.getPreferredContactDetails().trim());
+        ticket.setLegacyPreferredContact(requestDTO.getPreferredContactDetails().trim());
+        ticket.setUpdatedAt(LocalDateTime.now());
+
+        Ticket saved = ticketRepository.save(ticket);
+        return toResponse(saved);
+    }
+
+    @Transactional
+    public void deleteTicket(OidcUser oidcUser, Long ticketId) {
+        User actor = currentUserService.requireCurrentUser(oidcUser);
+        Ticket ticket = getTicketOrThrow(ticketId);
+        validateCanModifyTicket(ticket, actor);
+        ticketRepository.delete(ticket);
+    }
+
+    @Transactional
     public TicketResponseDTO addResolutionNotes(OidcUser oidcUser, Long ticketId, TicketResolutionRequestDTO requestDTO) {
         User actor = currentUserService.requireCurrentUser(oidcUser);
         Ticket ticket = getTicketOrThrow(ticketId);
@@ -275,10 +319,28 @@ public class TicketService {
     }
 
     private void validateResourceOrLocation(TicketCreateRequestDTO requestDTO) {
-        boolean hasResource = requestDTO.getResourceId() != null;
-        boolean hasLocation = requestDTO.getLocationReference() != null && !requestDTO.getLocationReference().isBlank();
+        validateResourceOrLocation(requestDTO.getResourceId(), requestDTO.getLocationReference());
+    }
+
+    private void validateResourceOrLocation(Long resourceId, String locationReference) {
+        boolean hasResource = resourceId != null;
+        boolean hasLocation = locationReference != null && !locationReference.isBlank();
         if (!hasResource && !hasLocation) {
             throw new IllegalArgumentException("Either resourceId or locationReference must be provided");
+        }
+    }
+
+    private void validateCanModifyTicket(Ticket ticket, User actor) {
+        if (currentUserService.isAdmin(actor)) {
+            return;
+        }
+
+        if (!ticket.getCreatedBy().getId().equals(actor.getId())) {
+            throw new AccessDeniedException("Only ticket owner or admin can modify this ticket");
+        }
+
+        if (ticket.getStatus() != TicketStatus.OPEN && ticket.getStatus() != TicketStatus.REJECTED) {
+            throw new AccessDeniedException("Only OPEN or REJECTED tickets can be modified");
         }
     }
 

@@ -2,9 +2,11 @@ import {
   CheckCircle2,
   ClipboardList,
   MessageSquare,
+  Pencil,
   Plus,
   Search,
   ShieldCheck,
+  Trash2,
   UserCircle2,
   Wrench,
 } from "lucide-react";
@@ -15,6 +17,7 @@ import {
   addTicketResolutionNotes,
   assignTicket,
   createTicket,
+  deleteTicket,
   deleteTicketComment,
   fetchAdminTickets,
   fetchAssignedTickets,
@@ -22,6 +25,7 @@ import {
   fetchProfile,
   fetchResources,
   fetchUsers,
+  updateTicket,
   updateTicketComment,
   updateTicketStatus,
 } from "../api/campusApi";
@@ -47,6 +51,16 @@ const initialCreateForm = {
   attachments: [],
 };
 
+const initialEditForm = {
+  ticketId: null,
+  resourceId: "",
+  locationReference: "",
+  category: "HARDWARE",
+  description: "",
+  priority: "MEDIUM",
+  preferredContactDetails: "",
+};
+
 function TicketsPage() {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState(null);
@@ -58,7 +72,13 @@ function TicketsPage() {
   const [query, setQuery] = useState("");
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [createForm, setCreateForm] = useState(initialCreateForm);
+  const [createErrors, setCreateErrors] = useState({});
   const [submittingCreate, setSubmittingCreate] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editForm, setEditForm] = useState(initialEditForm);
+  const [editErrors, setEditErrors] = useState({});
+  const [submittingEdit, setSubmittingEdit] = useState(false);
+  const [deletingTicketId, setDeletingTicketId] = useState(null);
   const [assignByTicket, setAssignByTicket] = useState({});
   const [statusByTicket, setStatusByTicket] = useState({});
   const [rejectReasonByTicket, setRejectReasonByTicket] = useState({});
@@ -157,39 +177,165 @@ function TicketsPage() {
   function handleCreateFormChange(event) {
     const { name, value } = event.target;
     setCreateForm((current) => ({ ...current, [name]: value }));
+    setCreateErrors((current) => ({ ...current, [name]: undefined }));
   }
 
   function handleAttachmentChange(event) {
     const files = Array.from(event.target.files ?? []);
     setCreateForm((current) => ({ ...current, attachments: files.slice(0, 3) }));
+    setCreateErrors((current) => ({ ...current, attachments: undefined }));
+  }
+
+  function validateTicketForm(values, { includeAttachments }) {
+    const errors = {};
+    const description = values.description.trim();
+    const preferredContactDetails = values.preferredContactDetails.trim();
+    const locationReference = values.locationReference.trim();
+    const resourceId = values.resourceId ? Number(values.resourceId) : null;
+
+    if (!resourceId && !locationReference) {
+      errors.locationReference = "Select a resource or provide location.";
+      errors.resourceId = "Select a resource or provide location.";
+    }
+
+    if (resourceId && !resources.some((resource) => Number(resource.id) === resourceId)) {
+      errors.resourceId = "Selected resource is unavailable.";
+    }
+
+    if (!description) {
+      errors.description = "Description is required.";
+    } else if (description.length < 10) {
+      errors.description = "Description must be at least 10 characters.";
+    } else if (description.length > 2000) {
+      errors.description = "Description must be 2000 characters or fewer.";
+    }
+
+    if (!preferredContactDetails) {
+      errors.preferredContactDetails = "Preferred contact details are required.";
+    } else if (preferredContactDetails.length < 5) {
+      errors.preferredContactDetails = "Preferred contact details must be at least 5 characters.";
+    } else if (preferredContactDetails.length > 300) {
+      errors.preferredContactDetails = "Preferred contact details must be 300 characters or fewer.";
+    }
+
+    if (locationReference.length > 255) {
+      errors.locationReference = "Location must be 255 characters or fewer.";
+    }
+
+    if (includeAttachments && (values.attachments ?? []).length > 3) {
+      errors.attachments = "Only up to 3 image attachments are allowed.";
+    }
+
+    return {
+      errors,
+      payload: {
+        resourceId,
+        locationReference,
+        category: values.category,
+        description,
+        priority: values.priority,
+        preferredContactDetails,
+      },
+    };
+  }
+
+  function canManageOwnTicket(ticket) {
+    const isOwner = Number(ticket.createdById) === Number(profile?.id);
+    const editableStatus = ticket.status === "OPEN" || ticket.status === "REJECTED";
+    return (role === "STUDENT" || role === "STAFF") && isOwner && editableStatus;
+  }
+
+  function openEditTicketModal(ticket) {
+    if (!canManageOwnTicket(ticket)) return;
+
+    setEditForm({
+      ticketId: ticket.id,
+      resourceId: ticket.resourceId ? String(ticket.resourceId) : "",
+      locationReference: ticket.locationReference ?? "",
+      category: ticket.category,
+      description: ticket.description,
+      priority: ticket.priority,
+      preferredContactDetails: ticket.preferredContactDetails,
+    });
+    setEditErrors({});
+    setEditModalOpen(true);
+  }
+
+  function handleEditFormChange(event) {
+    const { name, value } = event.target;
+    setEditForm((current) => ({ ...current, [name]: value }));
+    setEditErrors((current) => ({ ...current, [name]: undefined }));
+  }
+
+  async function handleSaveTicketChanges(event) {
+    event.preventDefault();
+    const activeTicketId = editForm.ticketId;
+    if (!activeTicketId) return;
+
+    const { errors, payload } = validateTicketForm(editForm, { includeAttachments: false });
+    setEditErrors(errors);
+    if (Object.keys(errors).length > 0) {
+      addToast({ type: "error", title: "Validation failed", message: "Please fix the highlighted fields." });
+      return;
+    }
+
+    setSubmittingEdit(true);
+    try {
+      const response = await updateTicket(activeTicketId, payload);
+      setTicket(response.data);
+      setEditModalOpen(false);
+      setEditForm(initialEditForm);
+      setEditErrors({});
+      addToast({
+        type: "success",
+        title: "Ticket updated",
+        message: "Ticket details were updated successfully.",
+      });
+    } catch (error) {
+      addToast({
+        type: "error",
+        title: "Update failed",
+        message: error?.response?.data?.message || "Could not update ticket.",
+      });
+    } finally {
+      setSubmittingEdit(false);
+    }
+  }
+
+  async function handleDeleteTicket(ticketId) {
+    const confirmed = window.confirm("Delete this ticket?");
+    if (!confirmed) return;
+
+    setDeletingTicketId(ticketId);
+    try {
+      await deleteTicket(ticketId);
+      setTickets((current) => current.filter((ticket) => ticket.id !== ticketId));
+      addToast({
+        type: "success",
+        title: "Ticket deleted",
+        message: "Ticket removed successfully.",
+      });
+    } catch (error) {
+      addToast({
+        type: "error",
+        title: "Delete failed",
+        message: error?.response?.data?.message || "Could not delete ticket.",
+      });
+    } finally {
+      setDeletingTicketId(null);
+    }
   }
 
   async function handleCreateTicket(event) {
     event.preventDefault();
 
-    if (!createForm.description.trim() || !createForm.preferredContactDetails.trim()) {
+    const { errors, payload } = validateTicketForm(createForm, { includeAttachments: true });
+    setCreateErrors(errors);
+    if (Object.keys(errors).length > 0) {
       addToast({
         type: "error",
         title: "Validation failed",
-        message: "Description and preferred contact details are required.",
-      });
-      return;
-    }
-
-    if (!createForm.resourceId && !createForm.locationReference.trim()) {
-      addToast({
-        type: "error",
-        title: "Validation failed",
-        message: "Select a resource or provide location reference.",
-      });
-      return;
-    }
-
-    if ((createForm.attachments ?? []).length > 3) {
-      addToast({
-        type: "error",
-        title: "Too many attachments",
-        message: "Only up to 3 image attachments are allowed.",
+        message: "Please fix the highlighted fields.",
       });
       return;
     }
@@ -197,16 +343,16 @@ function TicketsPage() {
     setSubmittingCreate(true);
     try {
       const formData = new FormData();
-      if (createForm.resourceId) {
-        formData.append("resourceId", createForm.resourceId);
+      if (payload.resourceId) {
+        formData.append("resourceId", String(payload.resourceId));
       }
-      if (createForm.locationReference.trim()) {
-        formData.append("locationReference", createForm.locationReference.trim());
+      if (payload.locationReference) {
+        formData.append("locationReference", payload.locationReference);
       }
-      formData.append("category", createForm.category);
-      formData.append("description", createForm.description.trim());
-      formData.append("priority", createForm.priority);
-      formData.append("preferredContactDetails", createForm.preferredContactDetails.trim());
+      formData.append("category", payload.category);
+      formData.append("description", payload.description);
+      formData.append("priority", payload.priority);
+      formData.append("preferredContactDetails", payload.preferredContactDetails);
 
       (createForm.attachments ?? []).forEach((file) => {
         formData.append("attachments", file);
@@ -215,6 +361,7 @@ function TicketsPage() {
       const response = await createTicket(formData);
       setTickets((current) => [response.data, ...current]);
       setCreateForm(initialCreateForm);
+      setCreateErrors({});
       setCreateModalOpen(false);
       addToast({
         type: "success",
@@ -512,6 +659,27 @@ function TicketsPage() {
                       <Badge value={ticket.status} />
                       <Badge value={ticket.priority} />
                       <Badge value={ticket.category} />
+                      {canManageOwnTicket(ticket) ? (
+                        <div className="ml-auto flex items-center gap-2">
+                          <button
+                            type="button"
+                            aria-label="Edit ticket"
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[color:var(--border)] text-[color:var(--text-muted)] transition hover:border-[color:var(--brand)] hover:text-[color:var(--brand)]"
+                            onClick={() => openEditTicketModal(ticket)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            aria-label="Delete ticket"
+                            disabled={deletingTicketId === ticket.id}
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[color:var(--border)] text-[color:var(--text-muted)] transition hover:border-red-500 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-60"
+                            onClick={() => handleDeleteTicket(ticket.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ) : null}
                     </div>
                     <p className="text-sm">{ticket.description}</p>
                     <div className="flex flex-wrap gap-4 text-xs text-[color:var(--text-muted)]">
@@ -771,11 +939,20 @@ function TicketsPage() {
 
       <Modal
         isOpen={createModalOpen}
-        onClose={() => setCreateModalOpen(false)}
+        onClose={() => {
+          setCreateModalOpen(false);
+          setCreateErrors({});
+        }}
         title="Create Ticket"
         footer={
           <div className="flex justify-end gap-2">
-            <Button variant="secondary" onClick={() => setCreateModalOpen(false)}>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setCreateModalOpen(false);
+                setCreateErrors({});
+              }}
+            >
               Cancel
             </Button>
             <Button form="create-ticket-form" type="submit" loading={submittingCreate}>
@@ -799,6 +976,9 @@ function TicketsPage() {
                 </option>
               ))}
             </select>
+            {createErrors.resourceId ? (
+              <p className="mt-1 text-xs text-rose-700 dark:text-rose-300">{createErrors.resourceId}</p>
+            ) : null}
           </FormField>
 
           <FormField label="Location (Optional)">
@@ -809,6 +989,9 @@ function TicketsPage() {
               placeholder="Building / floor / room"
               className="w-full rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none dark:bg-[color:var(--bg-soft)]/70"
             />
+            {createErrors.locationReference ? (
+              <p className="mt-1 text-xs text-rose-700 dark:text-rose-300">{createErrors.locationReference}</p>
+            ) : null}
           </FormField>
 
           <FormField label="Category">
@@ -849,6 +1032,9 @@ function TicketsPage() {
               placeholder="Phone/email with preferred time"
               className="w-full rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none dark:bg-[color:var(--bg-soft)]/70"
             />
+            {createErrors.preferredContactDetails ? (
+              <p className="mt-1 text-xs text-rose-700 dark:text-rose-300">{createErrors.preferredContactDetails}</p>
+            ) : null}
           </FormField>
 
           <FormField label="Image Attachments (Up to 3)">
@@ -862,6 +1048,9 @@ function TicketsPage() {
             <p className="mt-1 text-xs text-[color:var(--text-muted)]">
               {(createForm.attachments || []).length} selected
             </p>
+            {createErrors.attachments ? (
+              <p className="mt-1 text-xs text-rose-700 dark:text-rose-300">{createErrors.attachments}</p>
+            ) : null}
           </FormField>
 
           <FormField label="Description" className="md:col-span-2">
@@ -873,6 +1062,127 @@ function TicketsPage() {
               placeholder="Describe the issue in detail"
               className="w-full rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none dark:bg-[color:var(--bg-soft)]/70"
             />
+            {createErrors.description ? (
+              <p className="mt-1 text-xs text-rose-700 dark:text-rose-300">{createErrors.description}</p>
+            ) : null}
+          </FormField>
+        </form>
+      </Modal>
+
+      <Modal
+        isOpen={editModalOpen}
+        onClose={() => {
+          setEditModalOpen(false);
+          setEditForm(initialEditForm);
+          setEditErrors({});
+        }}
+        title="Edit Ticket"
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setEditModalOpen(false);
+                setEditForm(initialEditForm);
+                setEditErrors({});
+              }}
+            >
+              Cancel
+            </Button>
+            <Button form="edit-ticket-form" type="submit" loading={submittingEdit}>
+              Save Changes
+            </Button>
+          </div>
+        }
+      >
+        <form id="edit-ticket-form" className="grid gap-4 md:grid-cols-2" onSubmit={handleSaveTicketChanges}>
+          <FormField label="Resource (Optional)">
+            <select
+              name="resourceId"
+              value={editForm.resourceId}
+              onChange={handleEditFormChange}
+              className="w-full rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none dark:bg-[color:var(--bg-soft)]/70"
+            >
+              <option value="">No resource selected</option>
+              {resources.map((resource) => (
+                <option key={resource.id} value={resource.id}>
+                  {resource.name}
+                </option>
+              ))}
+            </select>
+            {editErrors.resourceId ? (
+              <p className="mt-1 text-xs text-rose-700 dark:text-rose-300">{editErrors.resourceId}</p>
+            ) : null}
+          </FormField>
+
+          <FormField label="Location (Optional)">
+            <input
+              name="locationReference"
+              value={editForm.locationReference}
+              onChange={handleEditFormChange}
+              placeholder="Building / floor / room"
+              className="w-full rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none dark:bg-[color:var(--bg-soft)]/70"
+            />
+            {editErrors.locationReference ? (
+              <p className="mt-1 text-xs text-rose-700 dark:text-rose-300">{editErrors.locationReference}</p>
+            ) : null}
+          </FormField>
+
+          <FormField label="Category">
+            <select
+              name="category"
+              value={editForm.category}
+              onChange={handleEditFormChange}
+              className="w-full rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none dark:bg-[color:var(--bg-soft)]/70"
+            >
+              {TICKET_CATEGORIES.map((category) => (
+                <option key={category} value={category}>
+                  {titleCase(category)}
+                </option>
+              ))}
+            </select>
+          </FormField>
+
+          <FormField label="Priority">
+            <select
+              name="priority"
+              value={editForm.priority}
+              onChange={handleEditFormChange}
+              className="w-full rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none dark:bg-[color:var(--bg-soft)]/70"
+            >
+              {TICKET_PRIORITIES.map((priority) => (
+                <option key={priority} value={priority}>
+                  {titleCase(priority)}
+                </option>
+              ))}
+            </select>
+          </FormField>
+
+          <FormField label="Preferred Contact Details">
+            <input
+              name="preferredContactDetails"
+              value={editForm.preferredContactDetails}
+              onChange={handleEditFormChange}
+              placeholder="Phone/email with preferred time"
+              className="w-full rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none dark:bg-[color:var(--bg-soft)]/70"
+            />
+            {editErrors.preferredContactDetails ? (
+              <p className="mt-1 text-xs text-rose-700 dark:text-rose-300">{editErrors.preferredContactDetails}</p>
+            ) : null}
+          </FormField>
+
+          <FormField label="Description" className="md:col-span-2">
+            <textarea
+              name="description"
+              rows={5}
+              value={editForm.description}
+              onChange={handleEditFormChange}
+              placeholder="Describe the issue in detail"
+              className="w-full rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none dark:bg-[color:var(--bg-soft)]/70"
+            />
+            {editErrors.description ? (
+              <p className="mt-1 text-xs text-rose-700 dark:text-rose-300">{editErrors.description}</p>
+            ) : null}
           </FormField>
         </form>
       </Modal>

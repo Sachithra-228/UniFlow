@@ -1,13 +1,15 @@
 import axios from "axios";
-import { Plus, Search } from "lucide-react";
+import { Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   createBooking,
+  deleteBooking,
   fetchBookings,
   fetchProfile,
   fetchResources,
   fetchUsers,
+  updateBooking,
   updateBookingStatus,
 } from "../api/campusApi";
 import Badge from "../components/common/Badge";
@@ -41,6 +43,9 @@ function BookingsPage() {
   const [openModal, setOpenModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [updatingBookingId, setUpdatingBookingId] = useState(null);
+  const [deletingBookingId, setDeletingBookingId] = useState(null);
+  const [editingBookingId, setEditingBookingId] = useState(null);
+  const [formErrors, setFormErrors] = useState({});
   const [form, setForm] = useState(initialForm);
   const [role, setRole] = useState("STUDENT");
   const { addToast } = useToast();
@@ -114,9 +119,159 @@ function BookingsPage() {
   function handleInput(event) {
     const { name, value } = event.target;
     setForm((current) => ({ ...current, [name]: value }));
+    setFormErrors((current) => ({ ...current, [name]: undefined }));
   }
 
   const canModerateBookings = role === "ADMIN" || role === "STAFF";
+
+  function normalizeDateLocalValue(value) {
+    if (!value) return "";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+    const tzOffsetMs = date.getTimezoneOffset() * 60 * 1000;
+    return new Date(date.getTime() - tzOffsetMs).toISOString().slice(0, 16);
+  }
+
+  function validateBookingForm(values) {
+    const errors = {};
+    const resolvedUserId = canModerateBookings ? Number(values.userId) : Number(currentUser?.id);
+    const resolvedResourceId = Number(values.resourceId);
+    const trimmedPurpose = values.purpose.trim();
+
+    if (!resolvedUserId) {
+      errors.userId = "Select a user before submitting.";
+    } else if (canModerateBookings && !users.some((user) => Number(user.id) === resolvedUserId)) {
+      errors.userId = "Selected user is unavailable. Choose another user.";
+    }
+    if (!resolvedResourceId) {
+      errors.resourceId = "Select a resource.";
+    } else if (!resources.some((resource) => Number(resource.id) === resolvedResourceId)) {
+      errors.resourceId = "Selected resource is unavailable. Choose another resource.";
+    }
+
+    const startDate = values.startTime ? new Date(values.startTime) : null;
+    const endDate = values.endTime ? new Date(values.endTime) : null;
+    const now = new Date();
+
+    if (!values.startTime) {
+      errors.startTime = "Start time is required.";
+    } else if (!startDate || Number.isNaN(startDate.getTime())) {
+      errors.startTime = "Enter a valid start time.";
+    } else if (startDate.getTime() < now.getTime() - 60 * 1000) {
+      errors.startTime = "Start time must be now or later.";
+    }
+
+    if (!values.endTime) {
+      errors.endTime = "End time is required.";
+    } else if (!endDate || Number.isNaN(endDate.getTime())) {
+      errors.endTime = "Enter a valid end time.";
+    }
+
+    if (!errors.startTime && !errors.endTime && endDate <= startDate) {
+      errors.endTime = "End time must be after the start time.";
+    }
+
+    if (!trimmedPurpose) {
+      errors.purpose = "Purpose is required.";
+    } else if (trimmedPurpose.length < 5) {
+      errors.purpose = "Purpose must be at least 5 characters.";
+    } else if (trimmedPurpose.length > 500) {
+      errors.purpose = "Purpose must be 500 characters or fewer.";
+    }
+
+    return {
+      errors,
+      payload: {
+        ...values,
+        userId: resolvedUserId,
+        resourceId: resolvedResourceId,
+        purpose: trimmedPurpose,
+      },
+    };
+  }
+
+  function resetFormState() {
+    setForm(
+      canModerateBookings
+        ? initialForm
+        : { ...initialForm, userId: currentUser?.id ? String(currentUser.id) : "" }
+    );
+    setFormErrors({});
+    setEditingBookingId(null);
+  }
+
+  function handleOpenCreateModal() {
+    resetFormState();
+    setOpenModal(true);
+  }
+
+  function canManageBooking(item) {
+    if (canModerateBookings) return true;
+    const currentUserId = Number(currentUser?.id);
+    return Number(item.userId) === currentUserId && item.status === "PENDING";
+  }
+
+  function handleEditBooking(item) {
+    if (!canManageBooking(item)) return;
+
+    const matchedResource = resources.find((resource) => Number(resource.id) === Number(item.resourceId))
+      ?? resources.find((resource) => resource.name === item.resourceName)
+      ?? null;
+
+    const matchedUser = users.find((user) => Number(user.id) === Number(item.userId))
+      ?? users.find((user) => user.name === item.userName)
+      ?? null;
+
+    setEditingBookingId(item.id);
+    setFormErrors((current) => ({
+      ...current,
+      resourceId: matchedResource ? undefined : "This booking references an unavailable resource. Please choose one.",
+      userId: canModerateBookings && !matchedUser ? "This booking references an unavailable user. Please choose one." : undefined,
+    }));
+    setForm({
+      userId: String(matchedUser?.id ?? item.userId ?? ""),
+      resourceId: String(matchedResource?.id ?? item.resourceId ?? ""),
+      startTime: normalizeDateLocalValue(item.startTime),
+      endTime: normalizeDateLocalValue(item.endTime),
+      purpose: item.purpose ?? "",
+    });
+    setOpenModal(true);
+  }
+
+  async function handleDeleteBooking(bookingId) {
+    const confirmed = window.confirm("Delete this booking request?");
+    if (!confirmed) return;
+
+    setDeletingBookingId(bookingId);
+    try {
+      const response = await deleteBooking(bookingId);
+      setBookings((current) => current.filter((booking) => booking.id !== bookingId));
+      addToast({
+        type: "success",
+        title: "Booking deleted",
+        message: response.isFallback ? "Deleted in local fallback mode." : "Booking removed successfully.",
+      });
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 404) {
+        // If record is stale in UI but absent on server, remove it locally to recover gracefully.
+        setBookings((current) => current.filter((booking) => booking.id !== bookingId));
+        addToast({
+          type: "info",
+          title: "Booking already removed",
+          message: "This booking no longer exists on the server and was removed from the list.",
+        });
+        return;
+      }
+
+      addToast({
+        type: "error",
+        title: "Delete failed",
+        message: error?.response?.data?.message || "Could not delete booking.",
+      });
+    } finally {
+      setDeletingBookingId(null);
+    }
+  }
 
   async function handleStatusUpdate(bookingId, status) {
     setUpdatingBookingId(bookingId);
@@ -143,35 +298,40 @@ function BookingsPage() {
 
   async function handleCreateBooking(event) {
     event.preventDefault();
-    const resolvedUserId = canModerateBookings
-      ? Number(form.userId)
-      : Number(currentUser?.id);
-
-    if (!resolvedUserId || !form.resourceId || !form.startTime || !form.endTime || !form.purpose.trim()) {
-      addToast({ type: "error", title: "Validation error", message: "Complete all fields before submitting." });
+    const activeEditingBookingId = editingBookingId;
+    const { errors, payload } = validateBookingForm(form);
+    setFormErrors(errors);
+    if (Object.keys(errors).length > 0) {
+      addToast({ type: "error", title: "Validation error", message: "Please fix the highlighted fields." });
       return;
     }
 
     setSubmitting(true);
     try {
-      const payload = {
-        ...form,
-        userId: resolvedUserId,
-        resourceId: Number(form.resourceId),
-      };
+      const response = activeEditingBookingId
+        ? await updateBooking(activeEditingBookingId, payload)
+        : await createBooking(payload);
 
-      const response = await createBooking(payload);
-      setBookings((current) => [response.data, ...current]);
-      setForm(
-        canModerateBookings
-          ? initialForm
-          : { ...initialForm, userId: currentUser?.id ? String(currentUser.id) : "" }
-      );
+      if (activeEditingBookingId) {
+        setBookings((current) =>
+          current.map((booking) => (booking.id === activeEditingBookingId ? response.data : booking))
+        );
+      } else {
+        setBookings((current) => [response.data, ...current]);
+      }
+
+      resetFormState();
       setOpenModal(false);
       addToast({
         type: "success",
-        title: "Booking submitted",
-        message: response.isFallback ? "Saved in local fallback mode." : "Booking request created successfully.",
+        title: activeEditingBookingId ? "Booking updated" : "Booking submitted",
+        message: response.isFallback
+          ? activeEditingBookingId
+            ? "Updated in local fallback mode."
+            : "Saved in local fallback mode."
+          : activeEditingBookingId
+            ? "Booking request updated successfully."
+            : "Booking request created successfully.",
       });
     } catch (error) {
       if (axios.isAxiosError(error) && error.response?.status === 409) {
@@ -185,13 +345,19 @@ function BookingsPage() {
 
       addToast({
         type: "error",
-        title: "Booking failed",
-        message: error?.response?.data?.message || "Could not create booking request.",
+        title: activeEditingBookingId ? "Update failed" : "Booking failed",
+        message: error?.response?.data?.message || "Could not save booking request.",
       });
     } finally {
       setSubmitting(false);
     }
   }
+
+  const minDateTimeLocal = useMemo(() => {
+    const now = new Date();
+    const tzOffsetMs = now.getTimezoneOffset() * 60 * 1000;
+    return new Date(now.getTime() - tzOffsetMs).toISOString().slice(0, 16);
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -221,7 +387,7 @@ function BookingsPage() {
             </select>
           </div>
 
-          <Button onClick={() => setOpenModal(true)}>
+          <Button onClick={handleOpenCreateModal}>
             <Plus className="h-4 w-4" />
             Create Booking
           </Button>
@@ -248,7 +414,7 @@ function BookingsPage() {
                   <th className="pb-3">End</th>
                   <th className="pb-3">Purpose</th>
                   <th className="pb-3">Status</th>
-                  {canModerateBookings ? <th className="pb-3">Actions</th> : null}
+                  <th className="pb-3">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[color:var(--border)]">
@@ -262,31 +428,57 @@ function BookingsPage() {
                     <td className="py-3">
                       <Badge value={item.status} />
                     </td>
-                    {canModerateBookings ? (
-                      <td className="py-3">
-                        {item.status === "PENDING" ? (
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              loading={updatingBookingId === item.id}
-                              onClick={() => handleStatusUpdate(item.id, "APPROVED")}
+                    <td className="py-3">
+                      <div className="flex items-center gap-2">
+                        {canManageBooking(item) ? (
+                          <>
+                            <button
+                              type="button"
+                              aria-label="Edit booking"
+                              className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[color:var(--border)] text-[color:var(--text-muted)] transition hover:border-[color:var(--brand)] hover:text-[color:var(--brand)]"
+                              onClick={() => handleEditBooking(item)}
                             >
-                              Approve
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="secondary"
-                              loading={updatingBookingId === item.id}
-                              onClick={() => handleStatusUpdate(item.id, "REJECTED")}
+                              <Pencil className="h-4 w-4" />
+                            </button>
+                            <button
+                              type="button"
+                              aria-label="Delete booking"
+                              disabled={deletingBookingId === item.id}
+                              className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[color:var(--border)] text-[color:var(--text-muted)] transition hover:border-red-500 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-60"
+                              onClick={() => handleDeleteBooking(item.id)}
                             >
-                              Reject
-                            </Button>
-                          </div>
-                        ) : (
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </>
+                        ) : null}
+
+                        {canModerateBookings ? (
+                          item.status === "PENDING" ? (
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                loading={updatingBookingId === item.id}
+                                onClick={() => handleStatusUpdate(item.id, "APPROVED")}
+                              >
+                                Approve
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                loading={updatingBookingId === item.id}
+                                onClick={() => handleStatusUpdate(item.id, "REJECTED")}
+                              >
+                                Reject
+                              </Button>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-[color:var(--text-muted)]">No moderation action</span>
+                          )
+                        ) : !canManageBooking(item) ? (
                           <span className="text-xs text-[color:var(--text-muted)]">No action</span>
-                        )}
-                      </td>
-                    ) : null}
+                        ) : null}
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -297,15 +489,24 @@ function BookingsPage() {
 
       <Modal
         isOpen={openModal}
-        onClose={() => setOpenModal(false)}
-        title="Create Booking Request"
+        onClose={() => {
+          setOpenModal(false);
+          resetFormState();
+        }}
+        title={editingBookingId ? "Edit Booking Request" : "Create Booking Request"}
         footer={
           <div className="flex justify-end gap-2">
-            <Button variant="secondary" onClick={() => setOpenModal(false)}>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setOpenModal(false);
+                resetFormState();
+              }}
+            >
               Cancel
             </Button>
             <Button form="booking-form" type="submit" loading={submitting}>
-              Submit Booking
+              {editingBookingId ? "Save Changes" : "Submit Booking"}
             </Button>
           </div>
         }
@@ -326,6 +527,9 @@ function BookingsPage() {
                   </option>
                 ))}
               </select>
+              {formErrors.userId ? (
+                <p className="mt-1 text-xs text-red-600">{formErrors.userId}</p>
+              ) : null}
             </FormField>
           ) : (
             <FormField label="User">
@@ -351,6 +555,9 @@ function BookingsPage() {
                 </option>
               ))}
             </select>
+            {formErrors.resourceId ? (
+              <p className="mt-1 text-xs text-red-600">{formErrors.resourceId}</p>
+            ) : null}
           </FormField>
 
           <FormField label="Start Time">
@@ -359,8 +566,12 @@ function BookingsPage() {
               name="startTime"
               value={form.startTime}
               onChange={handleInput}
+              min={minDateTimeLocal}
               className="w-full rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none dark:bg-[color:var(--bg-soft)]/70"
             />
+            {formErrors.startTime ? (
+              <p className="mt-1 text-xs text-red-600">{formErrors.startTime}</p>
+            ) : null}
           </FormField>
 
           <FormField label="End Time">
@@ -369,8 +580,12 @@ function BookingsPage() {
               name="endTime"
               value={form.endTime}
               onChange={handleInput}
+              min={form.startTime || minDateTimeLocal}
               className="w-full rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none dark:bg-[color:var(--bg-soft)]/70"
             />
+            {formErrors.endTime ? (
+              <p className="mt-1 text-xs text-red-600">{formErrors.endTime}</p>
+            ) : null}
           </FormField>
 
           <FormField label="Purpose" className="lg:col-span-2">
@@ -382,6 +597,9 @@ function BookingsPage() {
               placeholder="Explain why this booking is required"
               className="w-full rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none dark:bg-[color:var(--bg-soft)]/70"
             />
+            {formErrors.purpose ? (
+              <p className="mt-1 text-xs text-red-600">{formErrors.purpose}</p>
+            ) : null}
           </FormField>
         </form>
       </Modal>

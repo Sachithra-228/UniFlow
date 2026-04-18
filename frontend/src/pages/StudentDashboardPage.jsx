@@ -1,39 +1,58 @@
-import { BellRing, CalendarClock, ClipboardList, UserCircle2 } from "lucide-react";
+import axios from "axios";
+import { BellRing, CalendarClock, ClipboardList, Pencil, Trash2, UserCircle2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
-import { fetchBookings, fetchMyTickets, fetchProfile } from "../api/campusApi";
+import { deleteBooking, fetchBookings, fetchMyTickets, fetchProfile, fetchResources, updateBooking } from "../api/campusApi";
 import Badge from "../components/common/Badge";
+import Button from "../components/common/Button";
 import Card from "../components/common/Card";
 import EmptyState from "../components/common/EmptyState";
 import LoadingSkeleton from "../components/common/LoadingSkeleton";
+import Modal from "../components/common/Modal";
 import { useToast } from "../hooks/useToast";
 import { formatDateTime } from "../utils/format";
 import { normalizeRole } from "../utils/roles";
+
+const initialEditForm = {
+  resourceId: "",
+  startTime: "",
+  endTime: "",
+  purpose: "",
+};
 
 function StudentDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState(null);
   const [bookings, setBookings] = useState([]);
+  const [resources, setResources] = useState([]);
   const [tickets, setTickets] = useState([]);
   const [role, setRole] = useState(null);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editingBookingId, setEditingBookingId] = useState(null);
+  const [deletingBookingId, setDeletingBookingId] = useState(null);
+  const [savingBooking, setSavingBooking] = useState(false);
+  const [editForm, setEditForm] = useState(initialEditForm);
+  const [editErrors, setEditErrors] = useState({});
   const { addToast } = useToast();
 
   useEffect(() => {
     async function loadData() {
       setLoading(true);
       try {
-        const [profileResponse, bookingsResponse, ticketsResponse] = await Promise.all([
+        const [profileResponse, bookingsResponse, ticketsResponse, resourcesResponse] = await Promise.all([
           fetchProfile(),
           fetchBookings({ page: 0, size: 300 }),
           fetchMyTickets({ page: 0, size: 300 }),
+          fetchResources({ page: 0, size: 300 }),
         ]);
 
         setProfile(profileResponse.data);
         setRole(normalizeRole(profileResponse.data?.role));
         setBookings(bookingsResponse.items);
+        setResources(resourcesResponse.items);
         setTickets(ticketsResponse.items);
 
-        if (bookingsResponse.isFallback || profileResponse.isFallback || ticketsResponse.isFallback) {
+        if (bookingsResponse.isFallback || profileResponse.isFallback || ticketsResponse.isFallback || resourcesResponse.isFallback) {
           addToast({
             type: "info",
             title: "Fallback mode active",
@@ -77,6 +96,187 @@ function StudentDashboardPage() {
     }),
     [tickets]
   );
+
+  const minDateTimeLocal = useMemo(() => {
+    const now = new Date();
+    const tzOffsetMs = now.getTimezoneOffset() * 60 * 1000;
+    return new Date(now.getTime() - tzOffsetMs).toISOString().slice(0, 16);
+  }, []);
+
+  function normalizeDateLocalValue(value) {
+    if (!value) return "";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+    const tzOffsetMs = date.getTimezoneOffset() * 60 * 1000;
+    return new Date(date.getTime() - tzOffsetMs).toISOString().slice(0, 16);
+  }
+
+  function canManageBooking(booking) {
+    const profileId = Number(profile?.id);
+    return Number(booking.userId) === profileId && booking.status === "PENDING";
+  }
+
+  function validateEditForm(values) {
+    const errors = {};
+    const profileId = Number(profile?.id);
+    const selectedResourceId = Number(values.resourceId);
+    const purpose = values.purpose.trim();
+    const start = values.startTime ? new Date(values.startTime) : null;
+    const end = values.endTime ? new Date(values.endTime) : null;
+    const now = Date.now();
+
+    if (!selectedResourceId) {
+      errors.resourceId = "Select a resource.";
+    } else if (!resources.some((item) => Number(item.id) === selectedResourceId)) {
+      errors.resourceId = "Selected resource is unavailable.";
+    }
+
+    if (!profileId) {
+      errors.profile = "Your profile is unavailable. Refresh and try again.";
+    }
+
+    if (!values.startTime) {
+      errors.startTime = "Start time is required.";
+    } else if (!start || Number.isNaN(start.getTime())) {
+      errors.startTime = "Enter a valid start time.";
+    } else if (start.getTime() < now - 60 * 1000) {
+      errors.startTime = "Start time must be now or later.";
+    }
+
+    if (!values.endTime) {
+      errors.endTime = "End time is required.";
+    } else if (!end || Number.isNaN(end.getTime())) {
+      errors.endTime = "Enter a valid end time.";
+    } else if (start && end <= start) {
+      errors.endTime = "End time must be after start time.";
+    }
+
+    if (!purpose) {
+      errors.purpose = "Purpose is required.";
+    } else if (purpose.length < 5) {
+      errors.purpose = "Purpose must be at least 5 characters.";
+    } else if (purpose.length > 500) {
+      errors.purpose = "Purpose must be 500 characters or fewer.";
+    }
+
+    return {
+      errors,
+      payload: {
+        userId: profileId,
+        resourceId: selectedResourceId,
+        startTime: values.startTime,
+        endTime: values.endTime,
+        purpose,
+      },
+    };
+  }
+
+  function handleEditInput(event) {
+    const { name, value } = event.target;
+    setEditForm((current) => ({ ...current, [name]: value }));
+    setEditErrors((current) => ({ ...current, [name]: undefined }));
+  }
+
+  function openEditModal(booking) {
+    if (!canManageBooking(booking)) return;
+
+    const matchedResource = resources.find((item) => Number(item.id) === Number(booking.resourceId))
+      ?? resources.find((item) => item.name === booking.resourceName)
+      ?? null;
+
+    setEditingBookingId(booking.id);
+    setEditForm({
+      resourceId: String(matchedResource?.id ?? booking.resourceId ?? ""),
+      startTime: normalizeDateLocalValue(booking.startTime),
+      endTime: normalizeDateLocalValue(booking.endTime),
+      purpose: booking.purpose ?? "",
+    });
+    setEditErrors({
+      resourceId: matchedResource ? undefined : "This booking references an unavailable resource. Select another.",
+    });
+    setEditModalOpen(true);
+  }
+
+  async function handleSaveChanges(event) {
+    event.preventDefault();
+    const activeBookingId = editingBookingId;
+    if (!activeBookingId) return;
+
+    const { errors, payload } = validateEditForm(editForm);
+    setEditErrors(errors);
+    if (Object.keys(errors).length > 0) {
+      addToast({ type: "error", title: "Validation error", message: "Please fix the highlighted fields." });
+      return;
+    }
+
+    setSavingBooking(true);
+    try {
+      const response = await updateBooking(activeBookingId, payload);
+      setBookings((current) =>
+        current.map((booking) => (booking.id === activeBookingId ? response.data : booking))
+      );
+      setEditModalOpen(false);
+      setEditingBookingId(null);
+      setEditForm(initialEditForm);
+      setEditErrors({});
+      addToast({
+        type: "success",
+        title: "Booking updated",
+        message: response.isFallback ? "Updated in local fallback mode." : "Booking request updated successfully.",
+      });
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 409) {
+        addToast({
+          type: "error",
+          title: "Booking conflict",
+          message: "Selected resource is already booked in this time window.",
+        });
+        return;
+      }
+
+      addToast({
+        type: "error",
+        title: "Update failed",
+        message: error?.response?.data?.message || "Could not update booking.",
+      });
+    } finally {
+      setSavingBooking(false);
+    }
+  }
+
+  async function handleDeleteBooking(bookingId) {
+    const confirmed = window.confirm("Delete this booking request?");
+    if (!confirmed) return;
+
+    setDeletingBookingId(bookingId);
+    try {
+      const response = await deleteBooking(bookingId);
+      setBookings((current) => current.filter((booking) => booking.id !== bookingId));
+      addToast({
+        type: "success",
+        title: "Booking deleted",
+        message: response.isFallback ? "Deleted in local fallback mode." : "Booking removed successfully.",
+      });
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 404) {
+        setBookings((current) => current.filter((booking) => booking.id !== bookingId));
+        addToast({
+          type: "info",
+          title: "Booking already removed",
+          message: "This booking no longer exists on the server and was removed from the list.",
+        });
+        return;
+      }
+
+      addToast({
+        type: "error",
+        title: "Delete failed",
+        message: error?.response?.data?.message || "Could not delete booking.",
+      });
+    } finally {
+      setDeletingBookingId(null);
+    }
+  }
 
   if (role && role !== "STUDENT") {
     return <Navigate to="/dashboard" replace />;
@@ -191,14 +391,14 @@ function StudentDashboardPage() {
                   <th className="pb-3">Start</th>
                   <th className="pb-3">End</th>
                   <th className="pb-3">Status</th>
+                  <th className="pb-3">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[color:var(--border)]">
-                {myBookings.slice(0, 6).map((booking, idx) => (
+                {myBookings.slice(0, 6).map((booking) => (
                   <tr 
                     key={booking.id}
-                    className="hover:bg-[color:var(--bg-soft)]/50 transition-colors cursor-pointer group"
-                    onClick={() => window.location.href = `/bookings/${booking.id}`}
+                    className="hover:bg-[color:var(--bg-soft)]/50 transition-colors group"
                   >
                     <td className="py-3 pl-2 font-semibold group-hover:text-[color:var(--brand)] transition-colors">
                       {booking.resourceName}
@@ -215,6 +415,31 @@ function StudentDashboardPage() {
                     </td>
                     <td className="py-3">
                       <Badge value={booking.status} />
+                    </td>
+                    <td className="py-3">
+                      {canManageBooking(booking) ? (
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            aria-label="Edit booking"
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[color:var(--border)] text-[color:var(--text-muted)] transition hover:border-[color:var(--brand)] hover:text-[color:var(--brand)]"
+                            onClick={() => openEditModal(booking)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            aria-label="Delete booking"
+                            disabled={deletingBookingId === booking.id}
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[color:var(--border)] text-[color:var(--text-muted)] transition hover:border-red-500 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-60"
+                            onClick={() => handleDeleteBooking(booking.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-[color:var(--text-muted)]">No action</span>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -265,7 +490,110 @@ function StudentDashboardPage() {
           color="green"
         />
       </div>
+
+      <Modal
+        isOpen={editModalOpen}
+        onClose={() => {
+          setEditModalOpen(false);
+          setEditingBookingId(null);
+          setEditForm(initialEditForm);
+          setEditErrors({});
+        }}
+        title="Edit Booking Request"
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setEditModalOpen(false);
+                setEditingBookingId(null);
+                setEditForm(initialEditForm);
+                setEditErrors({});
+              }}
+            >
+              Cancel
+            </Button>
+            <Button form="student-booking-edit-form" type="submit" loading={savingBooking}>
+              Save Changes
+            </Button>
+          </div>
+        }
+      >
+        <form id="student-booking-edit-form" className="grid gap-4 lg:grid-cols-2" onSubmit={handleSaveChanges}>
+          <FormField label="Resource">
+            <select
+              name="resourceId"
+              value={editForm.resourceId}
+              onChange={handleEditInput}
+              className="w-full rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 pr-10 text-sm outline-none dark:bg-[color:var(--bg-soft)]/70"
+            >
+              <option value="">Select resource</option>
+              {resources.map((resource) => (
+                <option key={resource.id} value={resource.id}>
+                  {resource.name}
+                </option>
+              ))}
+            </select>
+            {editErrors.resourceId ? (
+              <p className="mt-1 text-xs text-red-600">{editErrors.resourceId}</p>
+            ) : null}
+          </FormField>
+
+          <div className="hidden lg:block" />
+
+          <FormField label="Start Time">
+            <input
+              type="datetime-local"
+              name="startTime"
+              value={editForm.startTime}
+              onChange={handleEditInput}
+              min={minDateTimeLocal}
+              className="w-full rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none dark:bg-[color:var(--bg-soft)]/70"
+            />
+            {editErrors.startTime ? (
+              <p className="mt-1 text-xs text-red-600">{editErrors.startTime}</p>
+            ) : null}
+          </FormField>
+
+          <FormField label="End Time">
+            <input
+              type="datetime-local"
+              name="endTime"
+              value={editForm.endTime}
+              onChange={handleEditInput}
+              min={editForm.startTime || minDateTimeLocal}
+              className="w-full rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none dark:bg-[color:var(--bg-soft)]/70"
+            />
+            {editErrors.endTime ? (
+              <p className="mt-1 text-xs text-red-600">{editErrors.endTime}</p>
+            ) : null}
+          </FormField>
+
+          <FormField label="Purpose" className="lg:col-span-2">
+            <textarea
+              name="purpose"
+              value={editForm.purpose}
+              onChange={handleEditInput}
+              rows={4}
+              placeholder="Explain why this booking is required"
+              className="w-full rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none dark:bg-[color:var(--bg-soft)]/70"
+            />
+            {editErrors.purpose ? (
+              <p className="mt-1 text-xs text-red-600">{editErrors.purpose}</p>
+            ) : null}
+          </FormField>
+        </form>
+      </Modal>
     </div>
+  );
+}
+
+function FormField({ label, className = "", children }) {
+  return (
+    <label className={`block ${className}`}>
+      <span className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.14em] text-[color:var(--text-muted)]">{label}</span>
+      {children}
+    </label>
   );
 }
 
@@ -337,21 +665,3 @@ function QuickAction({ to, icon: Icon, title, subtitle, color }) {
 }
 
 export default StudentDashboardPage;
-
-// Add this to your global CSS or tailwind config
-const styles = `
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.animate-fadeIn {
-  animation: fadeIn 0.5s ease-out;
-}
-`;

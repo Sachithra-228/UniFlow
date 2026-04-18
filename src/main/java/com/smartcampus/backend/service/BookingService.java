@@ -116,6 +116,74 @@ public class BookingService {
         return toBookingResponse(saved);
     }
 
+    @Transactional
+    public BookingResponseDTO updateBooking(
+            OidcUser oidcUser,
+            Long bookingId,
+            BookingRequestDTO requestDTO
+    ) {
+        validateBookingWindow(requestDTO.getStartTime(), requestDTO.getEndTime());
+
+        User actor = currentUserService.requireCurrentUser(oidcUser);
+        UserRole actorRole = currentUserService.roleOf(actor);
+
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new ResourceNotFoundException("Booking", bookingId));
+
+        boolean canModerate = actorRole == UserRole.ADMIN || actorRole == UserRole.STAFF;
+        if (!canModerate && !booking.getUser().getId().equals(actor.getId())) {
+            throw new AccessDeniedException("You can only update your own bookings");
+        }
+        if (!canModerate && booking.getStatus() != BookingStatus.PENDING) {
+            throw new AccessDeniedException("Only pending bookings can be edited");
+        }
+
+        Long targetUserId = canModerate ? requestDTO.getUserId() : actor.getId();
+        User user = userRepository.findById(targetUserId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", targetUserId));
+
+        Resource resource = resourceRepository.findById(requestDTO.getResourceId())
+                .orElseThrow(() -> new ResourceNotFoundException("Resource", requestDTO.getResourceId()));
+
+        boolean hasOverlap = bookingRepository.existsOverlappingBookingExcludingId(
+                bookingId,
+                resource.getId(),
+                requestDTO.getStartTime(),
+                requestDTO.getEndTime(),
+                List.of(BookingStatus.PENDING, BookingStatus.APPROVED)
+        );
+        if (hasOverlap) {
+            throw new BookingConflictException("Booking time overlaps with an existing reservation.");
+        }
+
+        booking.setUser(user);
+        booking.setResource(resource);
+        booking.setStartTime(requestDTO.getStartTime());
+        booking.setEndTime(requestDTO.getEndTime());
+        booking.setPurpose(requestDTO.getPurpose());
+        Booking saved = bookingRepository.save(booking);
+        return toBookingResponse(saved);
+    }
+
+    @Transactional
+    public void deleteBooking(OidcUser oidcUser, Long bookingId) {
+        User actor = currentUserService.requireCurrentUser(oidcUser);
+        UserRole actorRole = currentUserService.roleOf(actor);
+
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new ResourceNotFoundException("Booking", bookingId));
+
+        boolean canModerate = actorRole == UserRole.ADMIN || actorRole == UserRole.STAFF;
+        if (!canModerate && !booking.getUser().getId().equals(actor.getId())) {
+            throw new AccessDeniedException("You can only delete your own bookings");
+        }
+        if (!canModerate && booking.getStatus() != BookingStatus.PENDING) {
+            throw new AccessDeniedException("Only pending bookings can be deleted");
+        }
+
+        bookingRepository.delete(booking);
+    }
+
     private void validateBookingWindow(LocalDateTime startTime, LocalDateTime endTime) {
         if (startTime == null || endTime == null) {
             throw new IllegalArgumentException("Start time and end time are required.");

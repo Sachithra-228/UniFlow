@@ -100,7 +100,7 @@ function StudentDashboardPage() {
               Student Workspace
             </p>
             <h2 className="mt-2 text-2xl font-bold">
-              {getGreeting()}, {profile?.firstName || profile?.name || "Student"}! 👋
+              {getGreeting()}, {profile?.firstName || profile?.name || "Student"}!
             </h2>
             <p className="mt-2 text-sm text-[color:var(--text-muted)] max-w-2xl">
               Welcome back to your learning hub. View your reservations, track support tickets, 
@@ -108,7 +108,6 @@ function StudentDashboardPage() {
             </p>
           </div>
           <div className="hidden md:block text-4xl opacity-20">
-            🎓
           </div>
         </div>
       </Card>

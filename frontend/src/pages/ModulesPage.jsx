@@ -197,11 +197,10 @@ function ModulesPage() {
             return (
               <article
                 key={mod.name}
-                className={`group animate-reveal relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-0 shadow-[0_12px_28px_rgba(15,23,42,0.08)] transition-all duration-300 dark:border-white/12 dark:bg-white/[0.06] dark:shadow-none ${
-                  isClickable
-                    ? "cursor-pointer hover:-translate-y-1 hover:shadow-[0_18px_40px_rgba(15,23,42,0.13)] dark:hover:border-white/20"
-                    : ""
-                }`}
+                className={`group animate-reveal relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-0 shadow-[0_12px_28px_rgba(15,23,42,0.08)] transition-all duration-300 dark:border-white/12 dark:bg-white/[0.06] dark:shadow-none ${isClickable
+                  ? "cursor-pointer hover:-translate-y-1 hover:shadow-[0_18px_40px_rgba(15,23,42,0.13)] dark:hover:border-white/20"
+                  : ""
+                  }`}
                 style={{ animationDelay: `${100 + index * 80}ms` }}
                 onClick={() => isClickable && navigate(mod.link)}
                 role={isClickable ? "link" : undefined}
@@ -250,7 +249,7 @@ function ModulesPage() {
                     </ul>
                   </div>
 
-                  {/* Footer action */}
+                  {/*Footer action*/}
                   {isClickable ? (
                     <div className="mt-5 flex items-center gap-1.5 text-sm font-semibold text-[color:var(--brand)] transition-colors group-hover:text-cyan-600 dark:text-cyan-300 dark:group-hover:text-cyan-200">
                       Open module

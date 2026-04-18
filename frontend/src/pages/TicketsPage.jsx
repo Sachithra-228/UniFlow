@@ -10,6 +10,7 @@ import {
   UserCircle2,
   Wrench,
 } from "lucide-react";
+import axios from "axios";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -241,7 +242,10 @@ function TicketsPage() {
 
   function canManageOwnTicket(ticket) {
     const isOwner = Number(ticket.createdById) === Number(profile?.id);
-    const editableStatus = ticket.status === "OPEN" || ticket.status === "REJECTED";
+    const editableStatus =
+      ticket.status === "OPEN" ||
+      ticket.status === "IN_PROGRESS" ||
+      ticket.status === "REJECTED";
     return (role === "STUDENT" || role === "STAFF") && isOwner && editableStatus;
   }
 
@@ -272,7 +276,20 @@ function TicketsPage() {
     const activeTicketId = editForm.ticketId;
     if (!activeTicketId) return;
 
+    // Refresh resources before save so we don't submit stale resource ids.
+    let activeResources = resources;
+    try {
+      const resourcesResponse = await fetchResources({ page: 0, size: 300 });
+      activeResources = resourcesResponse.items;
+      setResources(resourcesResponse.items);
+    } catch {
+      // If refresh fails, continue with the latest known resource list.
+    }
+
     const { errors, payload } = validateTicketForm(editForm, { includeAttachments: false });
+    if (payload.resourceId && !activeResources.some((item) => Number(item.id) === Number(payload.resourceId))) {
+      errors.resourceId = "Selected resource is unavailable. Please select another resource.";
+    }
     setEditErrors(errors);
     if (Object.keys(errors).length > 0) {
       addToast({ type: "error", title: "Validation failed", message: "Please fix the highlighted fields." });
@@ -292,6 +309,35 @@ function TicketsPage() {
         message: "Ticket details were updated successfully.",
       });
     } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 404) {
+        const apiMessage = String(error.response?.data?.message || "").toLowerCase();
+        if (apiMessage.includes("resource")) {
+          setEditErrors((current) => ({
+            ...current,
+            resourceId: "Selected resource no longer exists. Choose another resource.",
+          }));
+          addToast({
+            type: "error",
+            title: "Resource unavailable",
+            message: "The selected resource was removed. Please choose another and save again.",
+          });
+          return;
+        }
+
+        if (apiMessage.includes("ticket")) {
+          setTickets((current) => current.filter((ticket) => ticket.id !== activeTicketId));
+          setEditModalOpen(false);
+          setEditForm(initialEditForm);
+          setEditErrors({});
+          addToast({
+            type: "info",
+            title: "Ticket no longer exists",
+            message: "This ticket was removed on the server and has been cleared from your list.",
+          });
+          return;
+        }
+      }
+
       addToast({
         type: "error",
         title: "Update failed",
@@ -316,6 +362,16 @@ function TicketsPage() {
         message: "Ticket removed successfully.",
       });
     } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 404) {
+        setTickets((current) => current.filter((ticket) => ticket.id !== ticketId));
+        addToast({
+          type: "info",
+          title: "Ticket already removed",
+          message: "This ticket no longer exists on the server and was removed from your list.",
+        });
+        return;
+      }
+
       addToast({
         type: "error",
         title: "Delete failed",
@@ -583,10 +639,11 @@ function TicketsPage() {
 
   return (
     <div className="space-y-6">
-      <Card className="p-6">
+      <Card className="overflow-hidden p-0">
+        <div className="bg-gradient-to-r from-[color:var(--brand)]/12 via-[color:var(--brand-soft)]/25 to-transparent p-6">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[color:var(--text-muted)]">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[color:var(--brand)]">
               Tickets
             </p>
             <h2 className="mt-2 text-2xl font-bold">{titleCase(role || "user")} Ticket Workspace</h2>
@@ -595,25 +652,29 @@ function TicketsPage() {
             </p>
           </div>
           {canCreateTicket ? (
-            <Button onClick={() => setCreateModalOpen(true)}>
+            <Button
+              onClick={() => setCreateModalOpen(true)}
+              className="bg-gradient-to-r from-[color:var(--brand)] to-blue-600 text-white shadow-md hover:brightness-110"
+            >
               <Plus className="h-4 w-4" />
               Create Ticket
             </Button>
           ) : null}
         </div>
+        </div>
       </Card>
 
       <div className="grid gap-4 md:grid-cols-5">
-        <SummaryCard icon={ClipboardList} label="Total" value={summary.total} />
-        <SummaryCard icon={Wrench} label="Open" value={summary.open} />
-        <SummaryCard icon={ShieldCheck} label="In Progress" value={summary.inProgress} />
-        <SummaryCard icon={CheckCircle2} label="Resolved" value={summary.resolved} />
-        <SummaryCard icon={UserCircle2} label="Rejected" value={summary.rejected} />
+        <SummaryCard icon={ClipboardList} label="Total" value={summary.total} tone="default" />
+        <SummaryCard icon={Wrench} label="Open" value={summary.open} tone="warn" />
+        <SummaryCard icon={ShieldCheck} label="In Progress" value={summary.inProgress} tone="info" />
+        <SummaryCard icon={CheckCircle2} label="Resolved" value={summary.resolved} tone="success" />
+        <SummaryCard icon={UserCircle2} label="Rejected" value={summary.rejected} tone="danger" />
       </div>
 
       <Card className="p-4 md:p-5">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <label className="flex flex-1 items-center gap-2 rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 dark:bg-[color:var(--bg-soft)]/80">
+          <label className="flex flex-1 items-center gap-2 rounded-xl border border-[color:var(--border)] bg-white/80 px-3 py-2 shadow-sm dark:bg-[color:var(--bg-soft)]/80">
             <Search className="h-4 w-4 text-[color:var(--text-muted)]" />
             <input
               value={query}
@@ -625,7 +686,7 @@ function TicketsPage() {
           <select
             value={statusFilter}
             onChange={(event) => setStatusFilter(event.target.value)}
-            className="rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none dark:bg-[color:var(--bg-soft)]/80"
+            className="rounded-xl border border-[color:var(--border)] bg-white/80 px-3 py-2 text-sm outline-none shadow-sm dark:bg-[color:var(--bg-soft)]/80"
           >
             <option value="ALL">All Status</option>
             {TICKET_STATUSES.map((status) => (
@@ -651,7 +712,7 @@ function TicketsPage() {
               normalizeRole(role) === "ADMIN" || Number(comment.authorId) === Number(profile?.id);
 
             return (
-              <Card key={ticket.id} className="p-5">
+              <Card key={ticket.id} className="border border-[color:var(--border)]/80 bg-white/75 p-5 shadow-sm transition-shadow hover:shadow-md dark:bg-[color:var(--bg-soft)]/75">
                 <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                   <div className="space-y-2">
                     <div className="flex flex-wrap items-center gap-2">
@@ -664,7 +725,7 @@ function TicketsPage() {
                           <button
                             type="button"
                             aria-label="Edit ticket"
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[color:var(--border)] text-[color:var(--text-muted)] transition hover:border-[color:var(--brand)] hover:text-[color:var(--brand)]"
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-sky-200 bg-sky-50 text-sky-700 transition hover:border-sky-400 hover:bg-sky-100 dark:border-sky-900/50 dark:bg-sky-950/30 dark:text-sky-300"
                             onClick={() => openEditTicketModal(ticket)}
                           >
                             <Pencil className="h-4 w-4" />
@@ -673,7 +734,7 @@ function TicketsPage() {
                             type="button"
                             aria-label="Delete ticket"
                             disabled={deletingTicketId === ticket.id}
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[color:var(--border)] text-[color:var(--text-muted)] transition hover:border-red-500 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-60"
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-rose-200 bg-rose-50 text-rose-700 transition hover:border-rose-400 hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-300"
                             onClick={() => handleDeleteTicket(ticket.id)}
                           >
                             <Trash2 className="h-4 w-4" />
@@ -923,6 +984,7 @@ function TicketsPage() {
                     />
                     <Button
                       size="sm"
+                      className="bg-[color:var(--brand)] text-white hover:brightness-110"
                       loading={busyKey === `comment-add-${ticket.id}`}
                       onClick={() => handleAddComment(ticket.id)}
                     >
@@ -1190,12 +1252,20 @@ function TicketsPage() {
   );
 }
 
-function SummaryCard({ icon: Icon, label, value }) {
+function SummaryCard({ icon: Icon, label, value, tone = "default" }) {
+  const toneClasses = {
+    default: "border-[color:var(--border)] bg-white/80 text-[color:var(--text)] dark:bg-[color:var(--bg-soft)]/80",
+    info: "border-indigo-200 bg-indigo-50 text-indigo-900 dark:border-indigo-900/60 dark:bg-indigo-950/30 dark:text-indigo-300",
+    success: "border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-300",
+    warn: "border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-300",
+    danger: "border-rose-200 bg-rose-50 text-rose-900 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-300",
+  };
+
   return (
-    <Card className="p-4">
+    <Card className={`border p-4 ${toneClasses[tone]}`}>
       <div className="flex items-center gap-2">
-        <Icon className="h-4 w-4 text-[color:var(--brand)]" />
-        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--text-muted)]">{label}</p>
+        <Icon className="h-4 w-4" />
+        <p className="text-xs font-semibold uppercase tracking-[0.12em] opacity-80">{label}</p>
       </div>
       <p className="mt-2 text-2xl font-bold">{value}</p>
     </Card>

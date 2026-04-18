@@ -131,14 +131,11 @@ public class BookingService {
                 .orElseThrow(() -> new ResourceNotFoundException("Booking", bookingId));
 
         boolean canModerate = actorRole == UserRole.ADMIN || actorRole == UserRole.STAFF;
-        if (!canModerate && !booking.getUser().getId().equals(actor.getId())) {
-            throw new AccessDeniedException("You can only update your own bookings");
-        }
         if (!canModerate && booking.getStatus() != BookingStatus.PENDING) {
             throw new AccessDeniedException("Only pending bookings can be edited");
         }
 
-        Long targetUserId = canModerate ? requestDTO.getUserId() : actor.getId();
+        Long targetUserId = canModerate ? requestDTO.getUserId() : booking.getUser().getId();
         User user = userRepository.findById(targetUserId)
                 .orElseThrow(() -> new ResourceNotFoundException("User", targetUserId));
 
@@ -174,9 +171,6 @@ public class BookingService {
                 .orElseThrow(() -> new ResourceNotFoundException("Booking", bookingId));
 
         boolean canModerate = actorRole == UserRole.ADMIN || actorRole == UserRole.STAFF;
-        if (!canModerate && !booking.getUser().getId().equals(actor.getId())) {
-            throw new AccessDeniedException("You can only delete your own bookings");
-        }
         if (!canModerate && booking.getStatus() != BookingStatus.PENDING) {
             throw new AccessDeniedException("Only pending bookings can be deleted");
         }

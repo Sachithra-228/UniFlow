@@ -187,13 +187,15 @@ public class TicketService {
 
         Resource resource = null;
         if (requestDTO.getResourceId() != null) {
-            resource = resourceRepository.findById(requestDTO.getResourceId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Resource", requestDTO.getResourceId()));
+            resource = resourceRepository.findById(requestDTO.getResourceId()).orElse(null);
         }
 
         String normalizedLocation = normalizeOptional(requestDTO.getLocationReference());
         if (normalizedLocation == null && resource != null) {
             normalizedLocation = normalizeOptional(resource.getLocation());
+        }
+        if (resource == null && requestDTO.getResourceId() != null && normalizedLocation == null) {
+            throw new ResourceNotFoundException("Resource", requestDTO.getResourceId());
         }
         if (normalizedLocation == null) {
             throw new IllegalArgumentException("Location is required when selected resource has no location.");
@@ -339,8 +341,10 @@ public class TicketService {
             throw new AccessDeniedException("Only ticket owner or admin can modify this ticket");
         }
 
-        if (ticket.getStatus() != TicketStatus.OPEN && ticket.getStatus() != TicketStatus.REJECTED) {
-            throw new AccessDeniedException("Only OPEN or REJECTED tickets can be modified");
+        if (ticket.getStatus() != TicketStatus.OPEN
+                && ticket.getStatus() != TicketStatus.IN_PROGRESS
+                && ticket.getStatus() != TicketStatus.REJECTED) {
+            throw new AccessDeniedException("Only OPEN, IN_PROGRESS, or REJECTED tickets can be modified");
         }
     }
 

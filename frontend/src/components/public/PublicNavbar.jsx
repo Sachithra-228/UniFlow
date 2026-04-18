@@ -1,4 +1,4 @@
-﻿import { Boxes, Home, Info, Menu, Moon, Sparkles, Sun, X } from "lucide-react";
+import { Boxes, Home, Info, Menu, Moon, Sparkles, Sun, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useTheme } from "../../hooks/useTheme";
@@ -65,7 +65,14 @@ function PublicNavbar() {
           hideTopNav ? "-translate-y-16 opacity-0 pointer-events-none" : "translate-y-0 opacity-100",
         ].join(" ")}
       >
-        <div className="flex items-center justify-between rounded-2xl border border-[color:var(--border)] bg-[color:var(--bg-soft)]/90 px-4 py-3 shadow-2xl backdrop-blur-lg dark:border-white/15 dark:bg-[color:var(--navy-deep)]/78 md:px-6">
+        <div
+          className={[
+            "flex items-center justify-between rounded-2xl border px-4 py-3 md:px-6",
+            location.pathname === "/"
+              ? "border-slate-300/55 bg-transparent shadow-none backdrop-blur-0 dark:border-white/25"
+              : "rounded-2xl border border-[color:var(--border)] bg-[color:var(--bg-soft)]/90 shadow-2xl backdrop-blur-lg dark:border-white/15 dark:bg-[color:var(--navy-deep)]/78",
+          ].join(" ")}
+        >
           <Link to="/" className="inline-flex items-center">
             <span className="text-base font-extrabold uppercase tracking-[0.18em] text-[color:var(--text)] dark:text-white">UNIFLOW</span>
           </Link>
@@ -92,7 +99,7 @@ function PublicNavbar() {
               size="sm"
               variant="secondary"
               className="!border-white !bg-white !text-slate-800 hover:!bg-slate-100"
-              onClick={() => navigate("/dashboard")}
+              onClick={() => navigate("/login")}
             >
               Sign In
             </Button>
@@ -188,7 +195,7 @@ function PublicNavbar() {
                 className="w-full !border-white !bg-white !text-slate-800 hover:!bg-slate-100"
                 onClick={() => {
                   setOpen(false);
-                  navigate("/dashboard");
+                  navigate("/login");
                 }}
               >
                 Sign In
@@ -202,3 +209,4 @@ function PublicNavbar() {
 }
 
 export default PublicNavbar;
+

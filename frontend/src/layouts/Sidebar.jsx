@@ -1,24 +1,138 @@
 import {
+  BellRing,
   BookCopy,
-  Building2,
+  CalendarDays,
+  ClipboardList,
+  GraduationCap,
+  Gauge,
   LayoutDashboard,
+  Link2,
+  ListFilter,
+  LogOut,
   PanelLeftClose,
+  Route,
   UserCircle2,
+  Wrench,
   UsersRound,
   X,
 } from "lucide-react";
-import { NavLink } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { NavLink, useNavigate } from "react-router-dom";
+import { fetchProfile, logoutUser } from "../api/campusApi";
+import Button from "../components/common/Button";
+import Modal from "../components/common/Modal";
+import { useToast } from "../hooks/useToast";
 import { cn } from "../utils/cn";
+import { normalizeRole } from "../utils/roles";
 
-const navItems = [
-  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/resources", label: "Resources", icon: Building2 },
-  { to: "/bookings", label: "Bookings", icon: BookCopy },
-  { to: "/users", label: "Users", icon: UsersRound },
-  { to: "/profile", label: "Profile", icon: UserCircle2 },
-];
+function buildRoleNavItems(unreadCount) {
+  const notificationItem = {
+    to: "/notifications",
+    label: "Notifications",
+    icon: BellRing,
+    badgeCount: unreadCount > 0 ? unreadCount : null,
+  };
 
-function Sidebar({ isMobileOpen, onClose, onCollapse, isCollapsed }) {
+  return {
+    STUDENT: [
+      { to: "/student/dashboard", label: "Dashboard", icon: LayoutDashboard },
+      { to: "/bookings", label: "Bookings", icon: BookCopy },
+      { to: "/enrollments", label: "Enrollments", icon: GraduationCap },
+      { to: "/calendar", label: "Calendar", icon: CalendarDays },
+      { to: "/tickets", label: "Tickets", icon: ClipboardList },
+      notificationItem,
+      { to: "/profile", label: "Profile", icon: UserCircle2 },
+    ],
+    STAFF: [
+      { to: "/staff/dashboard", label: "Dashboard", icon: LayoutDashboard },
+      { to: "/bookings", label: "Bookings", icon: BookCopy },
+      { to: "/enrollments", label: "Enrollments", icon: GraduationCap },
+      { to: "/calendar", label: "Calendar", icon: CalendarDays },
+      { to: "/tickets", label: "Tickets", icon: ClipboardList },
+      notificationItem,
+      { to: "/profile", label: "Profile", icon: UserCircle2 },
+    ],
+    TECHNICIAN: [
+      { to: "/technician/dashboard", label: "Dashboard", icon: LayoutDashboard },
+      { to: "/technician/sla", label: "SLA Monitor", icon: Gauge },
+      { to: "/technician/queue", label: "My Queue", icon: ListFilter },
+      { to: "/technician/visits", label: "Field Visits", icon: Route },
+      { to: "/tickets", label: "Tickets", icon: ClipboardList },
+      { to: "/bookings", label: "Bookings", icon: BookCopy },
+      notificationItem,
+      { to: "/profile", label: "Profile", icon: UserCircle2 },
+    ],
+    ADMIN: [
+      { to: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
+      { to: "/resources", label: "Resources", icon: Wrench },
+      { to: "/bookings", label: "Bookings", icon: BookCopy },
+      { to: "/enrollments", label: "Enrollments", icon: GraduationCap },
+      { to: "/calendar", label: "Calendar", icon: CalendarDays },
+      { to: "/tickets", label: "Tickets", icon: ClipboardList },
+      { to: "/admin/link-requests", label: "Link Requests", icon: Link2 },
+      { to: "/users", label: "Users", icon: UsersRound },
+      notificationItem,
+      { to: "/profile", label: "Profile", icon: UserCircle2 },
+    ],
+  };
+}
+
+function Sidebar({ isMobileOpen, onClose, onCollapse, isCollapsed, unreadCount = 0 }) {
+  const navigate = useNavigate();
+  const { addToast } = useToast();
+  const [role, setRole] = useState(null);
+  const [logoutModalOpen, setLogoutModalOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadNavigationState() {
+      try {
+        const profileResponse = await fetchProfile();
+        if (!mounted) return;
+        setRole(normalizeRole(profileResponse?.data?.role) ?? "STUDENT");
+      } catch (error) {
+        if (!mounted) return;
+        setRole("STUDENT");
+      }
+    }
+
+    loadNavigationState();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const navItems = useMemo(() => {
+    if (!role) return [];
+    const roleNavItems = buildRoleNavItems(unreadCount);
+    return roleNavItems[role] ?? roleNavItems.STUDENT;
+  }, [role, unreadCount]);
+
+  async function handleConfirmLogout() {
+    setLoggingOut(true);
+    try {
+      await logoutUser();
+      addToast({
+        type: "success",
+        title: "Signed out",
+        message: "You have been logged out successfully.",
+      });
+      setLogoutModalOpen(false);
+      onClose?.();
+      navigate("/", { replace: true });
+    } catch (error) {
+      addToast({
+        type: "error",
+        title: "Logout failed",
+        message: "Unable to sign out right now. Please try again.",
+      });
+    } finally {
+      setLoggingOut(false);
+    }
+  }
+
   return (
     <>
       <aside
@@ -27,7 +141,13 @@ function Sidebar({ isMobileOpen, onClose, onCollapse, isCollapsed }) {
           isCollapsed ? "w-[88px]" : "w-[268px]"
         )}
       >
-        <SidebarBody isCollapsed={isCollapsed} onCollapse={onCollapse} />
+        <SidebarBody
+          navItems={navItems}
+          role={role}
+          isCollapsed={isCollapsed}
+          onCollapse={onCollapse}
+          onRequestLogout={() => setLogoutModalOpen(true)}
+        />
       </aside>
 
       <div className={cn("fixed inset-0 z-[90] bg-slate-950/55 lg:hidden", isMobileOpen ? "block" : "hidden")} onClick={onClose} />
@@ -37,19 +157,41 @@ function Sidebar({ isMobileOpen, onClose, onCollapse, isCollapsed }) {
           isMobileOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
-        <SidebarBody isMobile onClose={onClose} />
+        <SidebarBody navItems={navItems} role={role} isMobile onClose={onClose} onRequestLogout={() => setLogoutModalOpen(true)} />
       </aside>
+
+      <Modal
+        isOpen={logoutModalOpen}
+        title="Confirm Logout"
+        onClose={() => {
+          if (!loggingOut) setLogoutModalOpen(false);
+        }}
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => setLogoutModalOpen(false)} disabled={loggingOut}>
+              Cancel
+            </Button>
+            <Button onClick={handleConfirmLogout} loading={loggingOut}>
+              Logout
+            </Button>
+          </div>
+        }
+      >
+        <p className="text-sm text-[color:var(--text-muted)]">
+          Are you sure you want to logout from Smart Campus?
+        </p>
+      </Modal>
     </>
   );
 }
 
-function SidebarBody({ isCollapsed = false, isMobile = false, onClose, onCollapse }) {
+function SidebarBody({ navItems, role, isCollapsed = false, isMobile = false, onClose, onCollapse, onRequestLogout }) {
   return (
     <div className="flex h-full flex-col p-4">
       <div className="mb-7 flex items-center justify-between">
         <div className={cn("overflow-hidden transition-all", isCollapsed ? "w-0 opacity-0" : "w-auto opacity-100")}>
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--text-muted)]">Smart Campus</p>
-          <h1 className="mt-1 text-lg font-bold">Operations Hub</h1>
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[color:var(--text-muted)]">UNIFLOW</p>
+          <h1 className="mt-1 text-lg font-bold">Campus Operations</h1>
         </div>
         {isMobile ? (
           <button
@@ -71,6 +213,11 @@ function SidebarBody({ isCollapsed = false, isMobile = false, onClose, onCollaps
       </div>
 
       <nav className="space-y-2">
+        {!navItems.length ? (
+          <div className="rounded-xl border border-[color:var(--border)] bg-white/60 px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-[color:var(--text-muted)] dark:bg-[color:var(--bg-soft)]/70">
+            Loading menu...
+          </div>
+        ) : null}
         {navItems.map((item) => (
           <NavLink
             key={item.to}
@@ -87,14 +234,35 @@ function SidebarBody({ isCollapsed = false, isMobile = false, onClose, onCollaps
             }
           >
             <item.icon className="h-4 w-4 shrink-0" />
-            <span className={cn("transition-all", isCollapsed && !isMobile && "w-0 overflow-hidden opacity-0")}>{item.label}</span>
+            <span className={cn("transition-all", isCollapsed && !isMobile && "w-0 overflow-hidden opacity-0")}>
+              {item.label}
+            </span>
+            {item.badgeCount ? (
+              <span
+                className={cn(
+                  "ml-auto inline-flex min-w-5 items-center justify-center rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] font-bold text-white",
+                  isCollapsed && !isMobile && "absolute right-1 top-1 min-w-4 px-1"
+                )}
+              >
+                {item.badgeCount > 99 ? "99+" : item.badgeCount}
+              </span>
+            ) : null}
           </NavLink>
         ))}
       </nav>
 
-      <div className="mt-auto rounded-2xl border border-[color:var(--border)] bg-white/60 p-4 dark:bg-white/5">
-        <p className="text-xs font-semibold uppercase tracking-[0.17em] text-[color:var(--text-muted)]">Live</p>
-        <p className="mt-2 text-sm font-semibold">Operational data sync enabled</p>
+      <div className="mt-auto pt-4">
+        <button
+          type="button"
+          onClick={onRequestLogout}
+          className={cn(
+            "flex w-full items-center gap-3 rounded-xl border border-[color:var(--border)] bg-white/70 px-3 py-2.5 text-sm font-semibold text-[color:var(--text)] transition hover:bg-black/5 dark:bg-[color:var(--bg-soft)]/80 dark:hover:bg-white/5",
+            isCollapsed && !isMobile && "justify-center px-2"
+          )}
+        >
+          <LogOut className="h-4 w-4 shrink-0" />
+          <span className={cn("transition-all", isCollapsed && !isMobile && "w-0 overflow-hidden opacity-0")}>Logout</span>
+        </button>
       </div>
     </div>
   );

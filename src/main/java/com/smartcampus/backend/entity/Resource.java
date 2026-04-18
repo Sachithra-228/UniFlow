@@ -14,6 +14,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 
 @Data
 @Builder
@@ -42,6 +43,12 @@ public class Resource {
 
     @Column(nullable = false)
     private String status;
+
+    @Column(name = "available_from", nullable = false)
+    private LocalTime availableFrom;
+
+    @Column(name = "available_to", nullable = false)
+    private LocalTime availableTo;
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;

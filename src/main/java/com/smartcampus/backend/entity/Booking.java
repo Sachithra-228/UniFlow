@@ -51,6 +51,19 @@ public class Booking {
     @Column
     private String purpose;
 
+    @Column(name = "qr_check_in_token", length = 64, unique = true)
+    private String qrCheckInToken;
+
+    @Column(name = "qr_generated_at")
+    private LocalDateTime qrGeneratedAt;
+
+    @Column(name = "checked_in_at")
+    private LocalDateTime checkedInAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "checked_in_by_user_id")
+    private User checkedInByUser;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 }

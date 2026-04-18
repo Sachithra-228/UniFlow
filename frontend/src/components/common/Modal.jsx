@@ -5,8 +5,8 @@ function Modal({ isOpen, title, children, onClose, footer }) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm">
-      <div className="glass-card fine-scrollbar max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl p-5 md:p-6">
+    <div className="fixed inset-0 z-[140] flex items-start justify-center bg-slate-950/45 p-4 pt-16 backdrop-blur-sm md:pt-20">
+      <div className="glass-card fine-scrollbar max-h-[calc(100vh-5rem)] w-full max-w-2xl overflow-y-auto rounded-2xl p-5 md:p-6">
         <div className="mb-5 flex items-center justify-between">
           <h3 className="text-xl font-semibold">{title}</h3>
           <Button variant="ghost" size="sm" className="h-8 w-8 !p-0" onClick={onClose}>

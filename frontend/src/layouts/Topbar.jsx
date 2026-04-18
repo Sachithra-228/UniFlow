@@ -1,9 +1,9 @@
-import { Menu, Search, ShieldCheck } from "lucide-react";
+import { BellRing, Menu, Search, ShieldCheck } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import ThemeToggle from "../components/common/ThemeToggle";
 import { PAGE_TITLES } from "../utils/constants";
 
-function Topbar({ onMenuClick }) {
+function Topbar({ onMenuClick, unreadCount = 0 }) {
   const location = useLocation();
   const navigate = useNavigate();
   const title = PAGE_TITLES[location.pathname] ?? "Smart Campus Operations Hub";
@@ -36,6 +36,25 @@ function Topbar({ onMenuClick }) {
         </div>
 
         <ThemeToggle />
+
+        <button
+          type="button"
+          onClick={() => navigate("/notifications")}
+          className={[
+            "relative inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold",
+            unreadCount > 0
+              ? "border-rose-300/70 bg-rose-50/80 text-rose-700 dark:border-rose-500/40 dark:bg-rose-500/10 dark:text-rose-200"
+              : "border-[color:var(--border)] bg-white/75 dark:bg-[color:var(--bg-soft)]/80",
+          ].join(" ")}
+        >
+          <BellRing className="h-4 w-4" />
+          <span className="hidden md:inline">Notifications</span>
+          {unreadCount > 0 ? (
+            <span className="absolute -right-1.5 -top-1.5 inline-flex min-w-5 items-center justify-center rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+              {unreadCount > 99 ? "99+" : unreadCount}
+            </span>
+          ) : null}
+        </button>
 
         <button
           type="button"

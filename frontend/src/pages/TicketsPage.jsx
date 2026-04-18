@@ -1,15 +1,14 @@
 import {
   CheckCircle2,
   ClipboardList,
+  Filter,
   MessageSquare,
   Plus,
-  Search,
   ShieldCheck,
   UserCircle2,
   Wrench,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
 import {
   addTicketComment,
   addTicketResolutionNotes,
@@ -54,9 +53,9 @@ function TicketsPage() {
   const [tickets, setTickets] = useState([]);
   const [resources, setResources] = useState([]);
   const [technicians, setTechnicians] = useState([]);
-  const [statusFilter, setStatusFilter] = useState("ALL");
-  const [query, setQuery] = useState("");
+  const [viewMode, setViewMode] = useState("table");
   const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [activeTicketId, setActiveTicketId] = useState(null);
   const [createForm, setCreateForm] = useState(initialCreateForm);
   const [submittingCreate, setSubmittingCreate] = useState(false);
   const [assignByTicket, setAssignByTicket] = useState({});
@@ -117,28 +116,9 @@ function TicketsPage() {
     loadData();
   }, [addToast]);
 
-  const filteredTickets = useMemo(() => {
-    return tickets
-      .filter((ticket) => {
-        const matchesStatus = statusFilter === "ALL" || ticket.status === statusFilter;
-        const haystack = [
-          ticket.description,
-          ticket.category,
-          ticket.priority,
-          ticket.status,
-          ticket.resourceName,
-          ticket.locationReference,
-          ticket.createdByName,
-          ticket.assignedTechnicianName,
-        ]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase();
-        const matchesQuery = haystack.includes(query.toLowerCase());
-        return matchesStatus && matchesQuery;
-      })
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  }, [query, statusFilter, tickets]);
+  const sortedTickets = useMemo(() => {
+    return [...tickets].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }, [tickets]);
 
   const summary = useMemo(() => {
     return {
@@ -149,6 +129,15 @@ function TicketsPage() {
       rejected: tickets.filter((ticket) => ticket.status === "REJECTED").length,
     };
   }, [tickets]);
+
+  const activeTicket = useMemo(() => {
+    if (activeTicketId == null) return null;
+    return tickets.find((ticket) => ticket.id === activeTicketId) || null;
+  }, [tickets, activeTicketId]);
+
+  const ticketViewProps = {
+    onOpenTicketManage: handleOpenTicketManage,
+  };
 
   function setTicket(updatedTicket) {
     setTickets((current) => current.map((ticket) => (ticket.id === updatedTicket.id ? updatedTicket : ticket)));
@@ -162,6 +151,16 @@ function TicketsPage() {
   function handleAttachmentChange(event) {
     const files = Array.from(event.target.files ?? []);
     setCreateForm((current) => ({ ...current, attachments: files.slice(0, 3) }));
+  }
+
+  function handleOpenTicketManage(ticketId) {
+    setEditingComment(null);
+    setActiveTicketId(ticketId);
+  }
+
+  function handleCloseTicketManage() {
+    setEditingComment(null);
+    setActiveTicketId(null);
   }
 
   async function handleCreateTicket(event) {
@@ -447,12 +446,18 @@ function TicketsPage() {
               Create, track, assign, resolve, and comment on operational tickets by role permissions.
             </p>
           </div>
-          {canCreateTicket ? (
-            <Button onClick={() => setCreateModalOpen(true)}>
-              <Plus className="h-4 w-4" />
-              Create Ticket
+          <div className="flex items-center gap-2">
+            <Button variant="secondary" onClick={() => setViewMode((prev) => (prev === "table" ? "cards" : "table"))}>
+              <Filter className="h-4 w-4" />
+              {viewMode === "table" ? "Card View" : "Table View"}
             </Button>
-          ) : null}
+            {canCreateTicket ? (
+              <Button onClick={() => setCreateModalOpen(true)}>
+                <Plus className="h-4 w-4" />
+                Create Ticket
+              </Button>
+            ) : null}
+          </div>
         </div>
       </Card>
 
@@ -464,310 +469,148 @@ function TicketsPage() {
         <SummaryCard icon={UserCircle2} label="Rejected" value={summary.rejected} />
       </div>
 
-      <Card className="p-4 md:p-5">
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <label className="flex flex-1 items-center gap-2 rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 dark:bg-[color:var(--bg-soft)]/80">
-            <Search className="h-4 w-4 text-[color:var(--text-muted)]" />
-            <input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search tickets by description, category, status, user..."
-              className="w-full bg-transparent text-sm outline-none placeholder:text-[color:var(--text-muted)]/70"
-            />
-          </label>
-          <select
-            value={statusFilter}
-            onChange={(event) => setStatusFilter(event.target.value)}
-            className="rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none dark:bg-[color:var(--bg-soft)]/80"
-          >
-            <option value="ALL">All Status</option>
-            {TICKET_STATUSES.map((status) => (
-              <option key={status} value={status}>
-                {titleCase(status)}
-              </option>
-            ))}
-          </select>
-        </div>
-      </Card>
-
-      {filteredTickets.length === 0 ? (
+      {sortedTickets.length === 0 ? (
         <Card className="p-6">
-          <EmptyState
-            title="No tickets found"
-            description="Create tickets or adjust your filters to view matching records."
-          />
+          <EmptyState title="No tickets found" description="Create tickets to start tracking operational incidents." />
+        </Card>
+      ) : viewMode === "table" ? (
+        <Card className="p-4 md:p-5">
+          <TicketsTable tickets={sortedTickets} {...ticketViewProps} />
         </Card>
       ) : (
-        <div className="space-y-4">
-          {filteredTickets.map((ticket) => {
-            const canEditComment = (comment) =>
-              normalizeRole(role) === "ADMIN" || Number(comment.authorId) === Number(profile?.id);
-
-            return (
-              <Card key={ticket.id} className="p-5">
-                <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-                  <div className="space-y-2">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="text-sm font-semibold">Ticket #{ticket.id}</p>
-                      <Badge value={ticket.status} />
-                      <Badge value={ticket.priority} />
-                      <Badge value={ticket.category} />
-                    </div>
-                    <p className="text-sm">{ticket.description}</p>
-                    <div className="flex flex-wrap gap-4 text-xs text-[color:var(--text-muted)]">
-                      <span>Created: {formatDateTime(ticket.createdAt)}</span>
-                      <span>By: {ticket.createdByName}</span>
-                      <span>Contact: {ticket.preferredContactDetails}</span>
-                      {ticket.resourceName ? <span>Resource: {ticket.resourceName}</span> : null}
-                      {ticket.locationReference ? <span>Location: {ticket.locationReference}</span> : null}
-                      {ticket.assignedTechnicianName ? <span>Technician: {ticket.assignedTechnicianName}</span> : null}
-                    </div>
-                    {ticket.rejectionReason ? (
-                      <p className="rounded-xl bg-rose-100/70 px-3 py-2 text-xs text-rose-800 dark:bg-rose-900/40 dark:text-rose-100">
-                        Rejection Reason: {ticket.rejectionReason}
-                      </p>
-                    ) : null}
-                    {ticket.resolutionNotes ? (
-                      <p className="rounded-xl bg-emerald-100/70 px-3 py-2 text-xs text-emerald-900 dark:bg-emerald-900/40 dark:text-emerald-100">
-                        Resolution Notes: {ticket.resolutionNotes}
-                      </p>
-                    ) : null}
-                  </div>
-
-                  <div className="flex min-w-[300px] flex-col gap-3">
-                    {canAssignTechnician ? (
-                      <div className="rounded-xl border border-[color:var(--border)] bg-white/70 p-3 dark:bg-[color:var(--bg-soft)]/75">
-                        <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--text-muted)]">
-                          Assign Technician
-                        </p>
-                        <div className="flex gap-2">
-                          <select
-                            value={assignByTicket[ticket.id] || ""}
-                            onChange={(event) =>
-                              setAssignByTicket((current) => ({ ...current, [ticket.id]: event.target.value }))
-                            }
-                            className="w-full rounded-xl border border-[color:var(--border)] bg-white/80 px-3 py-2 text-xs outline-none dark:bg-[color:var(--bg-soft)]"
-                          >
-                            <option value="">Select technician</option>
-                            {technicians.map((technician) => (
-                              <option key={technician.id} value={technician.id}>
-                                {technician.name} ({technician.email})
-                              </option>
-                            ))}
-                          </select>
-                          <Button
-                            size="sm"
-                            loading={busyKey === `assign-${ticket.id}`}
-                            onClick={() => handleAssignTechnician(ticket.id)}
-                          >
-                            Assign
-                          </Button>
-                        </div>
-                      </div>
-                    ) : null}
-
-                    {canUpdateStatus ? (
-                      <div className="rounded-xl border border-[color:var(--border)] bg-white/70 p-3 dark:bg-[color:var(--bg-soft)]/75">
-                        <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--text-muted)]">
-                          Update Status
-                        </p>
-                        <div className="flex gap-2">
-                          <select
-                            value={statusByTicket[ticket.id] || ""}
-                            onChange={(event) =>
-                              setStatusByTicket((current) => ({ ...current, [ticket.id]: event.target.value }))
-                            }
-                            className="w-full rounded-xl border border-[color:var(--border)] bg-white/80 px-3 py-2 text-xs outline-none dark:bg-[color:var(--bg-soft)]"
-                          >
-                            <option value="">Select status</option>
-                            {(role === "TECHNICIAN"
-                              ? ["IN_PROGRESS", "RESOLVED", "CLOSED"]
-                              : TICKET_STATUSES
-                            ).map((status) => (
-                              <option key={status} value={status}>
-                                {titleCase(status)}
-                              </option>
-                            ))}
-                          </select>
-                          <Button
-                            size="sm"
-                            loading={busyKey === `status-${ticket.id}`}
-                            onClick={() => handleStatusUpdate(ticket)}
-                          >
-                            Save
-                          </Button>
-                        </div>
-                        {(statusByTicket[ticket.id] || "") === "REJECTED" && role === "ADMIN" ? (
-                          <textarea
-                            rows={2}
-                            value={rejectReasonByTicket[ticket.id] || ""}
-                            onChange={(event) =>
-                              setRejectReasonByTicket((current) => ({
-                                ...current,
-                                [ticket.id]: event.target.value,
-                              }))
-                            }
-                            placeholder="Rejection reason (required)"
-                            className="mt-2 w-full rounded-xl border border-[color:var(--border)] bg-white/80 px-3 py-2 text-xs outline-none dark:bg-[color:var(--bg-soft)]"
-                          />
-                        ) : null}
-                      </div>
-                    ) : null}
-
-                    {canAddResolution ? (
-                      <div className="rounded-xl border border-[color:var(--border)] bg-white/70 p-3 dark:bg-[color:var(--bg-soft)]/75">
-                        <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--text-muted)]">
-                          Resolution Notes
-                        </p>
-                        <textarea
-                          rows={2}
-                          value={resolutionByTicket[ticket.id] ?? ticket.resolutionNotes ?? ""}
-                          onChange={(event) =>
-                            setResolutionByTicket((current) => ({ ...current, [ticket.id]: event.target.value }))
-                          }
-                          placeholder="Add resolution details"
-                          className="w-full rounded-xl border border-[color:var(--border)] bg-white/80 px-3 py-2 text-xs outline-none dark:bg-[color:var(--bg-soft)]"
-                        />
-                        <div className="mt-2 flex justify-end">
-                          <Button
-                            size="sm"
-                            loading={busyKey === `resolution-${ticket.id}`}
-                            onClick={() => handleResolutionSave(ticket.id)}
-                          >
-                            Save Notes
-                          </Button>
-                        </div>
-                      </div>
-                    ) : null}
-                  </div>
-                </div>
-
-                {ticket.attachments?.length ? (
-                  <div className="mt-4">
-                    <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--text-muted)]">
-                      Attachments
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {ticket.attachments.map((attachment) => (
-                        <a
-                          key={attachment.id}
-                          href={`${API_BASE_URL}${attachment.downloadUrl}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-xs font-semibold hover:underline dark:bg-[color:var(--bg-soft)]/80"
-                        >
-                          {attachment.originalFileName}
-                        </a>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
-
-                <div className="mt-4 rounded-xl border border-[color:var(--border)] bg-white/60 p-3 dark:bg-[color:var(--bg-soft)]/70">
-                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--text-muted)]">
-                    Comments
-                  </p>
-                  <div className="mt-2 space-y-2">
-                    {(ticket.comments || []).map((comment) => {
-                      const isEditing = editingComment?.commentId === comment.id;
-                      return (
-                        <div key={comment.id} className="rounded-lg border border-[color:var(--border)] bg-white/80 p-2 text-xs dark:bg-[color:var(--bg-soft)]/80">
-                          <div className="mb-1 flex items-center justify-between gap-3">
-                            <p className="font-semibold">
-                              {comment.authorName} · {formatDateTime(comment.createdAt)}
-                            </p>
-                            {canEditComment(comment) ? (
-                              <div className="flex gap-2">
-                                <button
-                                  type="button"
-                                  className="text-[color:var(--brand)] hover:underline"
-                                  onClick={() =>
-                                    setEditingComment({
-                                      ticketId: ticket.id,
-                                      commentId: comment.id,
-                                      text: comment.comment,
-                                    })
-                                  }
-                                >
-                                  Edit
-                                </button>
-                                <button
-                                  type="button"
-                                  className="text-rose-700 hover:underline dark:text-rose-300"
-                                  onClick={() => handleDeleteComment(ticket.id, comment.id)}
-                                  disabled={busyKey === `comment-delete-${comment.id}`}
-                                >
-                                  Delete
-                                </button>
-                              </div>
-                            ) : null}
-                          </div>
-                          {isEditing ? (
-                            <div className="space-y-2">
-                              <textarea
-                                rows={2}
-                                value={editingComment.text}
-                                onChange={(event) =>
-                                  setEditingComment((current) =>
-                                    current ? { ...current, text: event.target.value } : current
-                                  )
-                                }
-                                className="w-full rounded-xl border border-[color:var(--border)] bg-white px-3 py-2 text-xs outline-none dark:bg-[color:var(--bg-soft)]"
-                              />
-                              <div className="flex justify-end gap-2">
-                                <Button
-                                  size="sm"
-                                  variant="secondary"
-                                  onClick={() => setEditingComment(null)}
-                                >
-                                  Cancel
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  loading={busyKey === `comment-edit-${comment.id}`}
-                                  onClick={() => handleSaveEditedComment(ticket.id, comment.id)}
-                                >
-                                  Save
-                                </Button>
-                              </div>
-                            </div>
-                          ) : (
-                            <p>{comment.comment}</p>
-                          )}
-                        </div>
-                      );
-                    })}
-
-                    {!(ticket.comments || []).length ? (
-                      <p className="text-xs text-[color:var(--text-muted)]">No comments yet.</p>
-                    ) : null}
-                  </div>
-
-                  <div className="mt-3 flex gap-2">
-                    <textarea
-                      rows={2}
-                      value={commentDraftByTicket[ticket.id] || ""}
-                      onChange={(event) =>
-                        setCommentDraftByTicket((current) => ({ ...current, [ticket.id]: event.target.value }))
-                      }
-                      placeholder="Add a comment..."
-                      className="w-full rounded-xl border border-[color:var(--border)] bg-white/80 px-3 py-2 text-xs outline-none dark:bg-[color:var(--bg-soft)]"
-                    />
-                    <Button
-                      size="sm"
-                      loading={busyKey === `comment-add-${ticket.id}`}
-                      onClick={() => handleAddComment(ticket.id)}
-                    >
-                      <MessageSquare className="h-4 w-4" />
-                      Add
-                    </Button>
-                  </div>
-                </div>
-              </Card>
-            );
-          })}
-        </div>
+        <TicketsCards tickets={sortedTickets} {...ticketViewProps} />
       )}
+
+      <Modal
+        isOpen={Boolean(activeTicket)}
+        onClose={handleCloseTicketManage}
+        title={activeTicket ? `Ticket #${activeTicket.id} Details` : "Ticket Details"}
+        footer={
+          <div className="flex justify-end">
+            <Button variant="secondary" onClick={handleCloseTicketManage}>
+              Close
+            </Button>
+          </div>
+        }
+      >
+        {activeTicket ? (
+          <div className="space-y-4">
+            <div className="rounded-2xl border border-[color:var(--border)] bg-white/70 p-4 dark:bg-[color:var(--bg-soft)]/75">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--text-muted)]">
+                    Ticket Overview
+                  </p>
+                  <p className="mt-1 text-base font-semibold">{activeTicket.description}</p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <Badge value={activeTicket.status} />
+                    <Badge value={activeTicket.priority} />
+                    <Badge value={activeTicket.category} />
+                  </div>
+                </div>
+                <div className="text-right text-xs text-[color:var(--text-muted)]">
+                  <p>Created: {formatDateTime(activeTicket.createdAt)}</p>
+                  <p>Reporter: {activeTicket.createdByName || "-"}</p>
+                  <p>Contact: {activeTicket.preferredContactDetails || "-"}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-4 xl:grid-cols-2">
+              <div className="rounded-2xl border border-[color:var(--border)] bg-white/70 p-4 dark:bg-[color:var(--bg-soft)]/75">
+                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--text-muted)]">
+                  Context
+                </p>
+                <div className="mt-3 space-y-2 text-sm">
+                  <p>
+                    <span className="font-semibold">Assigned Technician:</span>{" "}
+                    {activeTicket.assignedTechnicianName || "Unassigned"}
+                  </p>
+                  <p>
+                    <span className="font-semibold">Resource:</span> {activeTicket.resourceName || "-"}
+                  </p>
+                  <p>
+                    <span className="font-semibold">Location:</span> {activeTicket.locationReference || "-"}
+                  </p>
+                  {activeTicket.rejectionReason ? (
+                    <p className="rounded-xl bg-rose-100/70 px-3 py-2 text-xs text-rose-800 dark:bg-rose-900/40 dark:text-rose-100">
+                      Rejection Reason: {activeTicket.rejectionReason}
+                    </p>
+                  ) : null}
+                  {activeTicket.resolutionNotes ? (
+                    <p className="rounded-xl bg-emerald-100/70 px-3 py-2 text-xs text-emerald-900 dark:bg-emerald-900/40 dark:text-emerald-100">
+                      Resolution Notes: {activeTicket.resolutionNotes}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+
+              {canAssignTechnician || canUpdateStatus || canAddResolution ? (
+                <div className="space-y-3 rounded-2xl border border-[color:var(--border)] bg-white/70 p-4 dark:bg-[color:var(--bg-soft)]/75">
+                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--text-muted)]">
+                    Ticket Actions
+                  </p>
+                  <TicketActionPanels
+                    ticket={activeTicket}
+                    role={role}
+                    canAssignTechnician={canAssignTechnician}
+                    canUpdateStatus={canUpdateStatus}
+                    canAddResolution={canAddResolution}
+                    technicians={technicians}
+                    assignByTicket={assignByTicket}
+                    setAssignByTicket={setAssignByTicket}
+                    statusByTicket={statusByTicket}
+                    setStatusByTicket={setStatusByTicket}
+                    rejectReasonByTicket={rejectReasonByTicket}
+                    setRejectReasonByTicket={setRejectReasonByTicket}
+                    resolutionByTicket={resolutionByTicket}
+                    setResolutionByTicket={setResolutionByTicket}
+                    busyKey={busyKey}
+                    onAssignTechnician={handleAssignTechnician}
+                    onStatusUpdate={handleStatusUpdate}
+                    onResolutionSave={handleResolutionSave}
+                  />
+                </div>
+              ) : null}
+            </div>
+
+            {activeTicket.attachments?.length ? (
+              <div className="rounded-2xl border border-[color:var(--border)] bg-white/70 p-4 dark:bg-[color:var(--bg-soft)]/75">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--text-muted)]">
+                  Attachments
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {activeTicket.attachments.map((attachment) => (
+                    <a
+                      key={attachment.id}
+                      href={`${API_BASE_URL}${attachment.downloadUrl}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-xs font-semibold hover:underline dark:bg-[color:var(--bg-soft)]/80"
+                    >
+                      {attachment.originalFileName}
+                    </a>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            <TicketCommentsPanel
+              ticket={activeTicket}
+              role={role}
+              profile={profile}
+              editingComment={editingComment}
+              setEditingComment={setEditingComment}
+              commentDraftByTicket={commentDraftByTicket}
+              setCommentDraftByTicket={setCommentDraftByTicket}
+              busyKey={busyKey}
+              onAddComment={handleAddComment}
+              onSaveEditedComment={handleSaveEditedComment}
+              onDeleteComment={handleDeleteComment}
+            />
+          </div>
+        ) : null}
+      </Modal>
 
       <Modal
         isOpen={createModalOpen}
@@ -877,6 +720,358 @@ function TicketsPage() {
         </form>
       </Modal>
     </div>
+  );
+}
+
+function TicketsTable({ tickets, onOpenTicketManage }) {
+  return (
+    <div className="fine-scrollbar overflow-x-auto">
+      <table className="min-w-full text-left text-sm">
+        <thead className="text-xs uppercase tracking-[0.12em] text-[color:var(--text-muted)]">
+          <tr>
+            <th className="pb-3">Ticket</th>
+            <th className="pb-3">Reporter</th>
+            <th className="pb-3">Summary</th>
+            <th className="pb-3">Status</th>
+            <th className="pb-3">Assigned</th>
+            <th className="pb-3">Created</th>
+            <th className="pb-3">Manage</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-[color:var(--border)]">
+          {tickets.map((ticket) => (
+            <tr
+              key={ticket.id}
+              className="cursor-pointer transition hover:bg-black/5 dark:hover:bg-white/5"
+              onClick={() => onOpenTicketManage(ticket.id)}
+            >
+              <td className="py-3 align-top">
+                <p className="font-semibold">#{ticket.id}</p>
+                <div className="mt-1 flex flex-wrap gap-1">
+                  <Badge value={ticket.priority} />
+                  <Badge value={ticket.category} />
+                </div>
+              </td>
+              <td className="py-3 align-top">
+                <p className="font-semibold">{ticket.createdByName || "-"}</p>
+                <p className="mt-1 text-xs text-[color:var(--text-muted)]">{ticket.preferredContactDetails || "-"}</p>
+              </td>
+              <td className="py-3 align-top">
+                <p className="max-w-[320px] text-xs">{ticket.description}</p>
+                <div className="mt-1 flex flex-wrap gap-3 text-xs text-[color:var(--text-muted)]">
+                  {ticket.resourceName ? <span>Resource: {ticket.resourceName}</span> : null}
+                  {ticket.locationReference ? <span>Location: {ticket.locationReference}</span> : null}
+                </div>
+              </td>
+              <td className="py-3 align-top">
+                <Badge value={ticket.status} />
+              </td>
+              <td className="py-3 align-top">
+                {ticket.assignedTechnicianName ? (
+                  <p className="text-xs">{ticket.assignedTechnicianName}</p>
+                ) : (
+                  <p className="text-xs text-[color:var(--text-muted)]">Unassigned</p>
+                )}
+              </td>
+              <td className="py-3 align-top text-xs">{formatDateTime(ticket.createdAt)}</td>
+              <td className="py-3 align-top">
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onOpenTicketManage(ticket.id);
+                  }}
+                  className="inline-flex items-center gap-1 rounded-lg border border-[color:var(--border)] px-2.5 py-1.5 text-xs font-semibold text-[color:var(--text)] hover:bg-black/5 dark:hover:bg-white/10"
+                >
+                  Open
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function TicketsCards({ tickets, onOpenTicketManage }) {
+  return (
+    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      {tickets.map((ticket) => (
+        <article
+          key={ticket.id}
+          className="rounded-2xl border border-[color:var(--border)] bg-white/70 p-4 transition hover:-translate-y-0.5 hover:shadow-[0_14px_28px_-22px_rgba(15,23,42,0.55)] dark:bg-[color:var(--bg-soft)]/80"
+        >
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-sm font-semibold">Ticket #{ticket.id}</p>
+            <Badge value={ticket.status} />
+          </div>
+          <p className="line-clamp-3 text-sm">{ticket.description}</p>
+          <div className="mt-3 flex flex-wrap gap-1">
+            <Badge value={ticket.priority} />
+            <Badge value={ticket.category} />
+          </div>
+          <div className="mt-3 space-y-1 text-xs text-[color:var(--text-muted)]">
+            <p>By: {ticket.createdByName || "-"}</p>
+            <p>Assigned: {ticket.assignedTechnicianName || "Unassigned"}</p>
+            <p>Created: {formatDateTime(ticket.createdAt)}</p>
+          </div>
+          <div className="mt-4 border-t border-[color:var(--border)] pt-3">
+            <button
+              type="button"
+              onClick={() => onOpenTicketManage(ticket.id)}
+              className="inline-flex items-center gap-1 rounded-lg border border-[color:var(--border)] px-2.5 py-1.5 text-xs font-semibold text-[color:var(--text)] hover:bg-black/5 dark:hover:bg-white/10"
+            >
+              Open Ticket
+            </button>
+          </div>
+        </article>
+      ))}
+    </div>
+  );
+}
+
+function TicketCommentsPanel({
+  ticket,
+  role,
+  profile,
+  editingComment,
+  setEditingComment,
+  commentDraftByTicket,
+  setCommentDraftByTicket,
+  busyKey,
+  onAddComment,
+  onSaveEditedComment,
+  onDeleteComment,
+}) {
+  const canEditComment = (comment) =>
+    normalizeRole(role) === "ADMIN" || Number(comment.authorId) === Number(profile?.id);
+
+  return (
+    <div className="rounded-2xl border border-[color:var(--border)] bg-white/70 p-4 dark:bg-[color:var(--bg-soft)]/75">
+      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--text-muted)]">Comments</p>
+      <div className="mt-2 space-y-2">
+        {(ticket.comments || []).map((comment) => {
+          const isEditing = editingComment?.commentId === comment.id;
+          return (
+            <div
+              key={comment.id}
+              className="rounded-lg border border-[color:var(--border)] bg-white/80 p-2 text-xs dark:bg-[color:var(--bg-soft)]/80"
+            >
+              <div className="mb-1 flex items-center justify-between gap-3">
+                <p className="font-semibold">
+                  {comment.authorName} - {formatDateTime(comment.createdAt)}
+                </p>
+                {canEditComment(comment) ? (
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      className="text-[color:var(--brand)] hover:underline"
+                      onClick={() =>
+                        setEditingComment({
+                          ticketId: ticket.id,
+                          commentId: comment.id,
+                          text: comment.comment,
+                        })
+                      }
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      className="text-rose-700 hover:underline dark:text-rose-300"
+                      onClick={() => onDeleteComment(ticket.id, comment.id)}
+                      disabled={busyKey === `comment-delete-${comment.id}`}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+              {isEditing ? (
+                <div className="space-y-2">
+                  <textarea
+                    rows={2}
+                    value={editingComment.text}
+                    onChange={(event) =>
+                      setEditingComment((current) =>
+                        current ? { ...current, text: event.target.value } : current
+                      )
+                    }
+                    className="w-full rounded-xl border border-[color:var(--border)] bg-white px-3 py-2 text-xs outline-none dark:bg-[color:var(--bg-soft)]"
+                  />
+                  <div className="flex justify-end gap-2">
+                    <Button size="sm" variant="secondary" onClick={() => setEditingComment(null)}>
+                      Cancel
+                    </Button>
+                    <Button
+                      size="sm"
+                      loading={busyKey === `comment-edit-${comment.id}`}
+                      onClick={() => onSaveEditedComment(ticket.id, comment.id)}
+                    >
+                      Save
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <p>{comment.comment}</p>
+              )}
+            </div>
+          );
+        })}
+
+        {!(ticket.comments || []).length ? (
+          <p className="text-xs text-[color:var(--text-muted)]">No comments yet.</p>
+        ) : null}
+      </div>
+
+      <div className="mt-3 flex gap-2">
+        <textarea
+          rows={2}
+          value={commentDraftByTicket[ticket.id] || ""}
+          onChange={(event) =>
+            setCommentDraftByTicket((current) => ({ ...current, [ticket.id]: event.target.value }))
+          }
+          placeholder="Add a comment..."
+          className="w-full rounded-xl border border-[color:var(--border)] bg-white/80 px-3 py-2 text-xs outline-none dark:bg-[color:var(--bg-soft)]"
+        />
+        <Button
+          size="sm"
+          loading={busyKey === `comment-add-${ticket.id}`}
+          onClick={() => onAddComment(ticket.id)}
+        >
+          <MessageSquare className="h-4 w-4" />
+          Add
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function TicketActionPanels({
+  ticket,
+  role,
+  canAssignTechnician,
+  canUpdateStatus,
+  canAddResolution,
+  technicians,
+  assignByTicket,
+  setAssignByTicket,
+  statusByTicket,
+  setStatusByTicket,
+  rejectReasonByTicket,
+  setRejectReasonByTicket,
+  resolutionByTicket,
+  setResolutionByTicket,
+  busyKey,
+  onAssignTechnician,
+  onStatusUpdate,
+  onResolutionSave,
+}) {
+  return (
+    <>
+      {canAssignTechnician ? (
+        <div className="rounded-xl border border-[color:var(--border)] bg-white/70 p-3 dark:bg-[color:var(--bg-soft)]/75">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--text-muted)]">
+            Assign Technician
+          </p>
+          <div className="flex gap-2">
+            <select
+              value={assignByTicket[ticket.id] || ""}
+              onChange={(event) =>
+                setAssignByTicket((current) => ({ ...current, [ticket.id]: event.target.value }))
+              }
+              className="w-full rounded-xl border border-[color:var(--border)] bg-white/80 px-3 py-2 text-xs outline-none dark:bg-[color:var(--bg-soft)]"
+            >
+              <option value="">Select technician</option>
+              {technicians.map((technician) => (
+                <option key={technician.id} value={technician.id}>
+                  {technician.name} ({technician.email})
+                </option>
+              ))}
+            </select>
+            <Button
+              size="sm"
+              loading={busyKey === `assign-${ticket.id}`}
+              onClick={() => onAssignTechnician(ticket.id)}
+            >
+              Assign
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
+      {canUpdateStatus ? (
+        <div className="rounded-xl border border-[color:var(--border)] bg-white/70 p-3 dark:bg-[color:var(--bg-soft)]/75">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--text-muted)]">
+            Update Status
+          </p>
+          <div className="flex gap-2">
+            <select
+              value={statusByTicket[ticket.id] || ""}
+              onChange={(event) =>
+                setStatusByTicket((current) => ({ ...current, [ticket.id]: event.target.value }))
+              }
+              className="w-full rounded-xl border border-[color:var(--border)] bg-white/80 px-3 py-2 text-xs outline-none dark:bg-[color:var(--bg-soft)]"
+            >
+              <option value="">Select status</option>
+              {(role === "TECHNICIAN" ? ["IN_PROGRESS", "RESOLVED", "CLOSED"] : TICKET_STATUSES).map((status) => (
+                <option key={status} value={status}>
+                  {titleCase(status)}
+                </option>
+              ))}
+            </select>
+            <Button
+              size="sm"
+              loading={busyKey === `status-${ticket.id}`}
+              onClick={() => onStatusUpdate(ticket)}
+            >
+              Save
+            </Button>
+          </div>
+          {(statusByTicket[ticket.id] || "") === "REJECTED" && role === "ADMIN" ? (
+            <textarea
+              rows={2}
+              value={rejectReasonByTicket[ticket.id] || ""}
+              onChange={(event) =>
+                setRejectReasonByTicket((current) => ({
+                  ...current,
+                  [ticket.id]: event.target.value,
+                }))
+              }
+              placeholder="Rejection reason (required)"
+              className="mt-2 w-full rounded-xl border border-[color:var(--border)] bg-white/80 px-3 py-2 text-xs outline-none dark:bg-[color:var(--bg-soft)]"
+            />
+          ) : null}
+        </div>
+      ) : null}
+
+      {canAddResolution ? (
+        <div className="rounded-xl border border-[color:var(--border)] bg-white/70 p-3 dark:bg-[color:var(--bg-soft)]/75">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--text-muted)]">
+            Resolution Notes
+          </p>
+          <textarea
+            rows={2}
+            value={resolutionByTicket[ticket.id] ?? ticket.resolutionNotes ?? ""}
+            onChange={(event) =>
+              setResolutionByTicket((current) => ({ ...current, [ticket.id]: event.target.value }))
+            }
+            placeholder="Add resolution details"
+            className="w-full rounded-xl border border-[color:var(--border)] bg-white/80 px-3 py-2 text-xs outline-none dark:bg-[color:var(--bg-soft)]"
+          />
+          <div className="mt-2 flex justify-end">
+            <Button
+              size="sm"
+              loading={busyKey === `resolution-${ticket.id}`}
+              onClick={() => onResolutionSave(ticket.id)}
+            >
+              Save Notes
+            </Button>
+          </div>
+        </div>
+      ) : null}
+    </>
   );
 }
 

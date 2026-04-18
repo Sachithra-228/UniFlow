@@ -52,7 +52,15 @@ public class SecurityConfig {
                         .userInfoEndpoint(Customizer.withDefaults())
                 )
                 .logout(logout -> logout
-                        .logoutSuccessUrl(frontendUrl + "/")
+                        .logoutUrl("/api/auth/logout")
+                        .invalidateHttpSession(true)
+                        .clearAuthentication(true)
+                        .deleteCookies("JSESSIONID")
+                        .logoutSuccessHandler((request, response, authentication) -> {
+                            response.setStatus(HttpStatus.OK.value());
+                            response.setContentType("application/json");
+                            response.getWriter().write("{\"message\":\"Logged out\"}");
+                        })
                 );
 
         return http.build();

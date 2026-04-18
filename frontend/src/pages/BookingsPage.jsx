@@ -1,5 +1,5 @@
 import axios from "axios";
-import { Plus, Search } from "lucide-react";
+import { Filter, Plus, Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
@@ -43,6 +43,7 @@ function BookingsPage() {
   const [updatingBookingId, setUpdatingBookingId] = useState(null);
   const [form, setForm] = useState(initialForm);
   const [role, setRole] = useState("STUDENT");
+  const [viewMode, setViewMode] = useState("table");
   const { addToast } = useToast();
 
   useEffect(() => {
@@ -221,10 +222,16 @@ function BookingsPage() {
             </select>
           </div>
 
-          <Button onClick={() => setOpenModal(true)}>
-            <Plus className="h-4 w-4" />
-            Create Booking
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="secondary" onClick={() => setViewMode((prev) => (prev === "table" ? "cards" : "table"))}>
+              <Filter className="h-4 w-4" />
+              {viewMode === "table" ? "Card View" : "Table View"}
+            </Button>
+            <Button onClick={() => setOpenModal(true)}>
+              <Plus className="h-4 w-4" />
+              Create Booking
+            </Button>
+          </div>
         </div>
       </Card>
 
@@ -237,61 +244,20 @@ function BookingsPage() {
           </div>
         ) : filteredBookings.length === 0 ? (
           <EmptyState title="No booking records" description="Bookings will appear here when users reserve rooms, labs, or equipment." />
+        ) : viewMode === "table" ? (
+          <BookingsTable
+            bookings={filteredBookings}
+            canModerateBookings={canModerateBookings}
+            updatingBookingId={updatingBookingId}
+            onStatusUpdate={handleStatusUpdate}
+          />
         ) : (
-          <div className="fine-scrollbar overflow-x-auto">
-            <table className="min-w-full text-left text-sm">
-              <thead className="text-xs uppercase tracking-[0.12em] text-[color:var(--text-muted)]">
-                <tr>
-                  <th className="pb-3">User</th>
-                  <th className="pb-3">Resource</th>
-                  <th className="pb-3">Start</th>
-                  <th className="pb-3">End</th>
-                  <th className="pb-3">Purpose</th>
-                  <th className="pb-3">Status</th>
-                  {canModerateBookings ? <th className="pb-3">Actions</th> : null}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[color:var(--border)]">
-                {filteredBookings.map((item) => (
-                  <tr key={item.id}>
-                    <td className="py-3 font-semibold">{item.userName}</td>
-                    <td className="py-3">{item.resourceName}</td>
-                    <td className="py-3 text-xs">{formatDateTime(item.startTime)}</td>
-                    <td className="py-3 text-xs">{formatDateTime(item.endTime)}</td>
-                    <td className="py-3 text-xs text-[color:var(--text-muted)]">{item.purpose}</td>
-                    <td className="py-3">
-                      <Badge value={item.status} />
-                    </td>
-                    {canModerateBookings ? (
-                      <td className="py-3">
-                        {item.status === "PENDING" ? (
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              loading={updatingBookingId === item.id}
-                              onClick={() => handleStatusUpdate(item.id, "APPROVED")}
-                            >
-                              Approve
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="secondary"
-                              loading={updatingBookingId === item.id}
-                              onClick={() => handleStatusUpdate(item.id, "REJECTED")}
-                            >
-                              Reject
-                            </Button>
-                          </div>
-                        ) : (
-                          <span className="text-xs text-[color:var(--text-muted)]">No action</span>
-                        )}
-                      </td>
-                    ) : null}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <BookingsCards
+            bookings={filteredBookings}
+            canModerateBookings={canModerateBookings}
+            updatingBookingId={updatingBookingId}
+            onStatusUpdate={handleStatusUpdate}
+          />
         )}
       </Card>
 
@@ -395,6 +361,121 @@ function FormField({ label, className = "", children }) {
       <span className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.14em] text-[color:var(--text-muted)]">{label}</span>
       {children}
     </label>
+  );
+}
+
+function BookingsTable({ bookings, canModerateBookings, updatingBookingId, onStatusUpdate }) {
+  return (
+    <div className="fine-scrollbar overflow-x-auto">
+      <table className="min-w-full text-left text-sm">
+        <thead className="text-xs uppercase tracking-[0.12em] text-[color:var(--text-muted)]">
+          <tr>
+            <th className="pb-3">User</th>
+            <th className="pb-3">Resource</th>
+            <th className="pb-3">Start</th>
+            <th className="pb-3">End</th>
+            <th className="pb-3">Purpose</th>
+            <th className="pb-3">Status</th>
+            {canModerateBookings ? <th className="pb-3">Actions</th> : null}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-[color:var(--border)]">
+          {bookings.map((item) => (
+            <tr key={item.id}>
+              <td className="py-3 font-semibold">{item.userName}</td>
+              <td className="py-3">{item.resourceName}</td>
+              <td className="py-3 text-xs">{formatDateTime(item.startTime)}</td>
+              <td className="py-3 text-xs">{formatDateTime(item.endTime)}</td>
+              <td className="py-3 text-xs text-[color:var(--text-muted)]">{item.purpose}</td>
+              <td className="py-3">
+                <Badge value={item.status} />
+              </td>
+              {canModerateBookings ? (
+                <td className="py-3">
+                  {item.status === "PENDING" ? (
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        loading={updatingBookingId === item.id}
+                        onClick={() => onStatusUpdate(item.id, "APPROVED")}
+                      >
+                        Approve
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        loading={updatingBookingId === item.id}
+                        onClick={() => onStatusUpdate(item.id, "REJECTED")}
+                      >
+                        Reject
+                      </Button>
+                    </div>
+                  ) : (
+                    <span className="text-xs text-[color:var(--text-muted)]">No action</span>
+                  )}
+                </td>
+              ) : null}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function BookingsCards({ bookings, canModerateBookings, updatingBookingId, onStatusUpdate }) {
+  return (
+    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      {bookings.map((item) => (
+        <article key={item.id} className="rounded-2xl border border-[color:var(--border)] bg-white/65 p-4 dark:bg-[color:var(--bg-soft)]/75">
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <p className="text-base font-semibold">{item.userName}</p>
+              <p className="mt-0.5 text-xs text-[color:var(--text-muted)]">{item.resourceName}</p>
+            </div>
+            <Badge value={item.status} />
+          </div>
+
+          <div className="mt-4 space-y-2 text-sm">
+            <p className="text-[color:var(--text-muted)]">
+              Start: <span className="font-semibold text-[color:var(--text)]">{formatDateTime(item.startTime)}</span>
+            </p>
+            <p className="text-[color:var(--text-muted)]">
+              End: <span className="font-semibold text-[color:var(--text)]">{formatDateTime(item.endTime)}</span>
+            </p>
+            <p className="text-[color:var(--text-muted)]">
+              Purpose: <span className="font-semibold text-[color:var(--text)]">{item.purpose}</span>
+            </p>
+          </div>
+
+          {canModerateBookings ? (
+            <div className="mt-4 flex items-center justify-end gap-2 border-t border-[color:var(--border)] pt-3">
+              {item.status === "PENDING" ? (
+                <>
+                  <Button
+                    size="sm"
+                    loading={updatingBookingId === item.id}
+                    onClick={() => onStatusUpdate(item.id, "APPROVED")}
+                  >
+                    Approve
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    loading={updatingBookingId === item.id}
+                    onClick={() => onStatusUpdate(item.id, "REJECTED")}
+                  >
+                    Reject
+                  </Button>
+                </>
+              ) : (
+                <span className="text-xs font-semibold text-[color:var(--text-muted)]">No action</span>
+              )}
+            </div>
+          ) : null}
+        </article>
+      ))}
+    </div>
   );
 }
 

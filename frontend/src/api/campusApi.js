@@ -145,6 +145,19 @@ export function getGoogleLoginUrl() {
   return `${API_BASE_URL}/oauth2/authorization/google`;
 }
 
+export async function logoutUser() {
+  try {
+    const response = await api.post("/api/auth/logout");
+    return { data: response.data };
+  } catch (error) {
+    // Treat already-expired or already-cleared sessions as logged out.
+    if (error?.response?.status === 401 || error?.response?.status === 403) {
+      return { data: null };
+    }
+    throw error;
+  }
+}
+
 export async function fetchAdminLinkRequests(status) {
   const params = status ? { status } : {};
   const response = await api.get("/api/admin/link-requests", { params });

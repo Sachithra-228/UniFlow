@@ -1,4 +1,4 @@
-import { Pencil, Plus, Search, Trash2, UserRound } from "lucide-react";
+import { Filter, Pencil, Plus, Search, Trash2, UserRound } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { deleteAdminUser, fetchUsers, inviteAdminUser, updateAdminUser } from "../api/campusApi";
 import Badge from "../components/common/Badge";
@@ -43,6 +43,7 @@ function UsersPage() {
   const [openDeleteModal, setOpenDeleteModal] = useState(false);
   const [deleteSubmitting, setDeleteSubmitting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [viewMode, setViewMode] = useState("table");
 
   const { addToast } = useToast();
 
@@ -277,67 +278,40 @@ function UsersPage() {
             ))}
           </select>
 
-          <Button onClick={() => setOpenInviteModal(true)}>
-            <Plus className="h-4 w-4" />
-            Create User
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="secondary" onClick={() => setViewMode((prev) => (prev === "table" ? "cards" : "table"))}>
+              <Filter className="h-4 w-4" />
+              {viewMode === "table" ? "Card View" : "Table View"}
+            </Button>
+            <Button onClick={() => setOpenInviteModal(true)}>
+              <Plus className="h-4 w-4" />
+              Create User
+            </Button>
+          </div>
         </div>
       </Card>
 
       <Card className="p-4 md:p-5">
         {loading ? (
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {Array.from({ length: 6 }).map((_, index) => (
-              <LoadingSkeleton key={index} className="h-[190px] rounded-2xl" />
-            ))}
-          </div>
+          viewMode === "table" ? (
+            <div className="space-y-3">
+              {Array.from({ length: 6 }).map((_, index) => (
+                <LoadingSkeleton key={index} className="h-12 rounded-xl" />
+              ))}
+            </div>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              {Array.from({ length: 6 }).map((_, index) => (
+                <LoadingSkeleton key={index} className="h-[190px] rounded-2xl" />
+              ))}
+            </div>
+          )
         ) : filteredUsers.length === 0 ? (
           <EmptyState title="No users found" description="Try adjusting your search or role filters." />
+        ) : viewMode === "table" ? (
+          <UsersTable users={filteredUsers} onEdit={openEditForUser} onDelete={openDeleteForUser} />
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {filteredUsers.map((user) => (
-              <article key={user.id} className="rounded-2xl border border-[color:var(--border)] bg-white/70 p-4 dark:bg-[color:var(--bg-soft)]/80">
-                <div className="mb-3 flex items-center justify-between">
-                  <span className="rounded-xl bg-[color:var(--brand-soft)] p-2">
-                    <UserRound className="h-4 w-4 text-[color:var(--brand)]" />
-                  </span>
-                  <Badge value={titleCase(user.role)} />
-                </div>
-
-                <p className="font-semibold">{user.name}</p>
-                <p className="mt-1 text-sm text-[color:var(--text-muted)]">{user.email}</p>
-
-                <div className="mt-4 flex items-center gap-2 text-xs">
-                  <span className="font-semibold text-[color:var(--text-muted)]">Provider:</span>
-                  <Badge value={titleCase(user.provider ?? "local")} />
-                </div>
-
-                <div className="mt-2 flex items-center gap-2 text-xs">
-                  <span className="font-semibold text-[color:var(--text-muted)]">Status:</span>
-                  <Badge value={titleCase(user.accountStatus ?? "active")} />
-                </div>
-
-                <div className="mt-4 flex items-center justify-end gap-2 border-t border-[color:var(--border)] pt-3">
-                  <button
-                    type="button"
-                    onClick={() => openEditForUser(user)}
-                    className="inline-flex items-center gap-1 rounded-lg border border-[color:var(--border)] px-2.5 py-1.5 text-xs font-semibold text-[color:var(--text)] hover:bg-black/5 dark:hover:bg-white/10"
-                  >
-                    <Pencil className="h-3.5 w-3.5" />
-                    Update
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => openDeleteForUser(user)}
-                    className="inline-flex items-center gap-1 rounded-lg border border-rose-200 px-2.5 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:border-rose-400/40 dark:text-rose-300 dark:hover:bg-rose-400/10"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                    Delete
-                  </button>
-                </div>
-              </article>
-            ))}
-          </div>
+          <UsersCards users={filteredUsers} onEdit={openEditForUser} onDelete={openDeleteForUser} />
         )}
       </Card>
 
@@ -481,6 +455,111 @@ function FormField({ label, children }) {
       <span className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.14em] text-[color:var(--text-muted)]">{label}</span>
       {children}
     </label>
+  );
+}
+
+function UsersTable({ users, onEdit, onDelete }) {
+  return (
+    <div className="fine-scrollbar overflow-x-auto">
+      <table className="min-w-full text-left text-sm">
+        <thead className="text-xs uppercase tracking-[0.12em] text-[color:var(--text-muted)]">
+          <tr>
+            <th className="pb-3">Name</th>
+            <th className="pb-3">Email</th>
+            <th className="pb-3">Role</th>
+            <th className="pb-3">Provider</th>
+            <th className="pb-3">Status</th>
+            <th className="pb-3">Actions</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-[color:var(--border)]">
+          {users.map((user) => (
+            <tr key={user.id}>
+              <td className="py-3 font-semibold">{user.name}</td>
+              <td className="py-3">{user.email}</td>
+              <td className="py-3">
+                <Badge value={titleCase(user.role)} />
+              </td>
+              <td className="py-3">
+                <Badge value={titleCase(user.provider ?? "local")} />
+              </td>
+              <td className="py-3">
+                <Badge value={titleCase(user.accountStatus ?? "active")} />
+              </td>
+              <td className="py-3">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => onEdit(user)}
+                    className="inline-flex items-center gap-1 rounded-lg border border-[color:var(--border)] px-2.5 py-1.5 text-xs font-semibold text-[color:var(--text)] hover:bg-black/5 dark:hover:bg-white/10"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                    Update
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onDelete(user)}
+                    className="inline-flex items-center gap-1 rounded-lg border border-rose-200 px-2.5 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:border-rose-400/40 dark:text-rose-300 dark:hover:bg-rose-400/10"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Delete
+                  </button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function UsersCards({ users, onEdit, onDelete }) {
+  return (
+    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      {users.map((user) => (
+        <article key={user.id} className="rounded-2xl border border-[color:var(--border)] bg-white/70 p-4 dark:bg-[color:var(--bg-soft)]/80">
+          <div className="mb-3 flex items-center justify-between">
+            <span className="rounded-xl bg-[color:var(--brand-soft)] p-2">
+              <UserRound className="h-4 w-4 text-[color:var(--brand)]" />
+            </span>
+            <Badge value={titleCase(user.role)} />
+          </div>
+
+          <p className="font-semibold">{user.name}</p>
+          <p className="mt-1 text-sm text-[color:var(--text-muted)]">{user.email}</p>
+
+          <div className="mt-4 flex items-center gap-2 text-xs">
+            <span className="font-semibold text-[color:var(--text-muted)]">Provider:</span>
+            <Badge value={titleCase(user.provider ?? "local")} />
+          </div>
+
+          <div className="mt-2 flex items-center gap-2 text-xs">
+            <span className="font-semibold text-[color:var(--text-muted)]">Status:</span>
+            <Badge value={titleCase(user.accountStatus ?? "active")} />
+          </div>
+
+          <div className="mt-4 flex items-center justify-end gap-2 border-t border-[color:var(--border)] pt-3">
+            <button
+              type="button"
+              onClick={() => onEdit(user)}
+              className="inline-flex items-center gap-1 rounded-lg border border-[color:var(--border)] px-2.5 py-1.5 text-xs font-semibold text-[color:var(--text)] hover:bg-black/5 dark:hover:bg-white/10"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+              Update
+            </button>
+            <button
+              type="button"
+              onClick={() => onDelete(user)}
+              className="inline-flex items-center gap-1 rounded-lg border border-rose-200 px-2.5 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:border-rose-400/40 dark:text-rose-300 dark:hover:bg-rose-400/10"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Delete
+            </button>
+          </div>
+        </article>
+      ))}
+    </div>
   );
 }
 

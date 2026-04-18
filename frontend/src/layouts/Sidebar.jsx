@@ -4,6 +4,7 @@ import {
   ClipboardList,
   LayoutDashboard,
   Link2,
+  LogOut,
   PanelLeftClose,
   UserCircle2,
   Wrench,
@@ -11,8 +12,11 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { NavLink, useLocation } from "react-router-dom";
-import { fetchMyNotifications, fetchProfile } from "../api/campusApi";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import { fetchMyNotifications, fetchProfile, logoutUser } from "../api/campusApi";
+import Button from "../components/common/Button";
+import Modal from "../components/common/Modal";
+import { useToast } from "../hooks/useToast";
 import { cn } from "../utils/cn";
 import { normalizeRole } from "../utils/roles";
 
@@ -61,8 +65,12 @@ function buildRoleNavItems(unreadCount) {
 
 function Sidebar({ isMobileOpen, onClose, onCollapse, isCollapsed }) {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { addToast } = useToast();
   const [role, setRole] = useState(null);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [logoutModalOpen, setLogoutModalOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -95,6 +103,29 @@ function Sidebar({ isMobileOpen, onClose, onCollapse, isCollapsed }) {
     return roleNavItems[role] ?? roleNavItems.STUDENT;
   }, [role, unreadCount]);
 
+  async function handleConfirmLogout() {
+    setLoggingOut(true);
+    try {
+      await logoutUser();
+      addToast({
+        type: "success",
+        title: "Signed out",
+        message: "You have been logged out successfully.",
+      });
+      setLogoutModalOpen(false);
+      onClose?.();
+      navigate("/", { replace: true });
+    } catch (error) {
+      addToast({
+        type: "error",
+        title: "Logout failed",
+        message: "Unable to sign out right now. Please try again.",
+      });
+    } finally {
+      setLoggingOut(false);
+    }
+  }
+
   return (
     <>
       <aside
@@ -108,6 +139,7 @@ function Sidebar({ isMobileOpen, onClose, onCollapse, isCollapsed }) {
           role={role}
           isCollapsed={isCollapsed}
           onCollapse={onCollapse}
+          onRequestLogout={() => setLogoutModalOpen(true)}
         />
       </aside>
 
@@ -118,13 +150,35 @@ function Sidebar({ isMobileOpen, onClose, onCollapse, isCollapsed }) {
           isMobileOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
-        <SidebarBody navItems={navItems} role={role} isMobile onClose={onClose} />
+        <SidebarBody navItems={navItems} role={role} isMobile onClose={onClose} onRequestLogout={() => setLogoutModalOpen(true)} />
       </aside>
+
+      <Modal
+        isOpen={logoutModalOpen}
+        title="Confirm Logout"
+        onClose={() => {
+          if (!loggingOut) setLogoutModalOpen(false);
+        }}
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => setLogoutModalOpen(false)} disabled={loggingOut}>
+              Cancel
+            </Button>
+            <Button variant="danger" onClick={handleConfirmLogout} loading={loggingOut}>
+              Logout
+            </Button>
+          </div>
+        }
+      >
+        <p className="text-sm text-[color:var(--text-muted)]">
+          Are you sure you want to logout from Smart Campus?
+        </p>
+      </Modal>
     </>
   );
 }
 
-function SidebarBody({ navItems, role, isCollapsed = false, isMobile = false, onClose, onCollapse }) {
+function SidebarBody({ navItems, role, isCollapsed = false, isMobile = false, onClose, onCollapse, onRequestLogout }) {
   return (
     <div className="flex h-full flex-col p-4">
       <div className="mb-7 flex items-center justify-between">
@@ -189,6 +243,20 @@ function SidebarBody({ navItems, role, isCollapsed = false, isMobile = false, on
           </NavLink>
         ))}
       </nav>
+
+      <div className="mt-auto pt-4">
+        <button
+          type="button"
+          onClick={onRequestLogout}
+          className={cn(
+            "flex w-full items-center gap-3 rounded-xl border border-rose-300/50 bg-rose-50/70 px-3 py-2.5 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 dark:border-rose-500/35 dark:bg-rose-500/10 dark:text-rose-200 dark:hover:bg-rose-500/20",
+            isCollapsed && !isMobile && "justify-center px-2"
+          )}
+        >
+          <LogOut className="h-4 w-4 shrink-0" />
+          <span className={cn("transition-all", isCollapsed && !isMobile && "w-0 overflow-hidden opacity-0")}>Logout</span>
+        </button>
+      </div>
     </div>
   );
 }

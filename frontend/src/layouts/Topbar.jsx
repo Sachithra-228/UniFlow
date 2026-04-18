@@ -1,33 +1,12 @@
 import { BellRing, Menu, Search, ShieldCheck } from "lucide-react";
-import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { fetchMyNotifications } from "../api/campusApi";
 import ThemeToggle from "../components/common/ThemeToggle";
 import { PAGE_TITLES } from "../utils/constants";
 
-function Topbar({ onMenuClick }) {
+function Topbar({ onMenuClick, unreadCount = 0 }) {
   const location = useLocation();
   const navigate = useNavigate();
   const title = PAGE_TITLES[location.pathname] ?? "Smart Campus Operations Hub";
-  const [unreadCount, setUnreadCount] = useState(0);
-
-  useEffect(() => {
-    let mounted = true;
-    async function loadUnreadCount() {
-      try {
-        const response = await fetchMyNotifications({ page: 0, size: 1 }, { unreadOnly: true });
-        if (!mounted) return;
-        setUnreadCount(response.totalElements ?? 0);
-      } catch {
-        if (!mounted) return;
-        setUnreadCount(0);
-      }
-    }
-    loadUnreadCount();
-    return () => {
-      mounted = false;
-    };
-  }, [location.pathname]);
 
   return (
     <header className="sticky top-0 z-40 border-b border-[color:var(--border)] bg-[color:var(--bg)]/80 px-4 py-3 backdrop-blur-lg md:px-6">
@@ -61,7 +40,12 @@ function Topbar({ onMenuClick }) {
         <button
           type="button"
           onClick={() => navigate("/notifications")}
-          className="relative inline-flex items-center gap-2 rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm font-semibold dark:bg-[color:var(--bg-soft)]/80"
+          className={[
+            "relative inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold",
+            unreadCount > 0
+              ? "border-rose-300/70 bg-rose-50/80 text-rose-700 dark:border-rose-500/40 dark:bg-rose-500/10 dark:text-rose-200"
+              : "border-[color:var(--border)] bg-white/75 dark:bg-[color:var(--bg-soft)]/80",
+          ].join(" ")}
         >
           <BellRing className="h-4 w-4" />
           <span className="hidden md:inline">Notifications</span>

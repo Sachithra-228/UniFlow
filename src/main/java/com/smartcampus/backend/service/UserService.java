@@ -8,9 +8,12 @@ import com.smartcampus.backend.entity.UserRole;
 import com.smartcampus.backend.exception.ResourceNotFoundException;
 import com.smartcampus.backend.repository.AccountLinkRequestRepository;
 import com.smartcampus.backend.repository.BookingRepository;
+import com.smartcampus.backend.repository.CampusEventRepository;
+import com.smartcampus.backend.repository.EventEnrollmentRepository;
 import com.smartcampus.backend.repository.NotificationRepository;
 import com.smartcampus.backend.repository.TicketCommentRepository;
 import com.smartcampus.backend.repository.TicketRepository;
+import com.smartcampus.backend.repository.TicketVisitEventRepository;
 import com.smartcampus.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -31,8 +34,11 @@ public class UserService {
     private final BookingRepository bookingRepository;
     private final TicketRepository ticketRepository;
     private final TicketCommentRepository ticketCommentRepository;
+    private final TicketVisitEventRepository ticketVisitEventRepository;
     private final NotificationRepository notificationRepository;
     private final AccountLinkRequestRepository accountLinkRequestRepository;
+    private final EventEnrollmentRepository eventEnrollmentRepository;
+    private final CampusEventRepository campusEventRepository;
 
     public Page<UserResponseDTO> getAllUsers(Pageable pageable) {
         return userRepository.findAll(pageable).map(this::toUserResponse);
@@ -92,6 +98,7 @@ public class UserService {
 
         // Remove comments authored by user on other users' tickets.
         ticketCommentRepository.deleteByAuthorId(userId);
+        ticketVisitEventRepository.deleteByTechnicianId(userId);
 
         // Unassign technician references first to preserve tickets that belong to other users.
         ticketRepository.clearAssignedTechnicianReferences(userId);
@@ -101,6 +108,10 @@ public class UserService {
         if (!createdTickets.isEmpty()) {
             ticketRepository.deleteAll(createdTickets);
         }
+
+        // Remove event enrollments for this user and events created by this user.
+        eventEnrollmentRepository.deleteByStudentId(userId);
+        campusEventRepository.deleteByCreatedById(userId);
 
         bookingRepository.deleteByUserId(userId);
     }
@@ -127,8 +138,15 @@ public class UserService {
         throw new AccessDeniedException("Google account is not linked to an invited identity yet");
     }
 
+    @Transactional
+    public User updateOwnProfileName(OidcUser oidcUser, String nextName) {
+        User user = resolveGoogleUser(oidcUser);
+        user.setName(nextName.trim());
+        return userRepository.save(user);
+    }
+
     private void applyGoogleLink(User user, String googleEmail, String googleSubject, String displayName) {
-        if (displayName != null && !displayName.isBlank()) {
+        if ((user.getName() == null || user.getName().isBlank()) && displayName != null && !displayName.isBlank()) {
             user.setName(displayName);
         }
 

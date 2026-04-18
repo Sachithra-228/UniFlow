@@ -26,6 +26,37 @@ const initialEditForm = {
   accountStatus: "ACTIVE",
 };
 
+const USER_ROLE_STYLES = {
+  STUDENT: {
+    cardBg:
+      "bg-gradient-to-br from-cyan-300/30 via-cyan-200/24 to-cyan-50/80 dark:from-cyan-800/40 dark:via-cyan-900/24 dark:to-[color:var(--bg-soft)]/88",
+    iconWrap: "bg-cyan-200/55 dark:bg-cyan-900/45",
+    iconColor: "text-cyan-800 dark:text-cyan-100",
+  },
+  STAFF: {
+    cardBg:
+      "bg-gradient-to-br from-emerald-300/30 via-emerald-200/24 to-emerald-50/80 dark:from-emerald-800/40 dark:via-emerald-900/24 dark:to-[color:var(--bg-soft)]/88",
+    iconWrap: "bg-emerald-200/55 dark:bg-emerald-900/45",
+    iconColor: "text-emerald-800 dark:text-emerald-100",
+  },
+  TECHNICIAN: {
+    cardBg:
+      "bg-gradient-to-br from-amber-300/34 via-amber-200/26 to-amber-50/82 dark:from-amber-800/42 dark:via-amber-900/26 dark:to-[color:var(--bg-soft)]/88",
+    iconWrap: "bg-amber-200/55 dark:bg-amber-900/45",
+    iconColor: "text-amber-800 dark:text-amber-100",
+  },
+  ADMIN: {
+    cardBg:
+      "bg-gradient-to-br from-rose-300/30 via-rose-200/24 to-rose-50/80 dark:from-rose-800/40 dark:via-rose-900/24 dark:to-[color:var(--bg-soft)]/88",
+    iconWrap: "bg-rose-200/55 dark:bg-rose-900/45",
+    iconColor: "text-rose-800 dark:text-rose-100",
+  },
+};
+
+function getUserRoleStyles(role) {
+  return USER_ROLE_STYLES[normalizeRole(role) ?? "STUDENT"] ?? USER_ROLE_STYLES.STUDENT;
+}
+
 function UsersPage() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -517,11 +548,13 @@ function UsersTable({ users, onEdit, onDelete }) {
 function UsersCards({ users, onEdit, onDelete }) {
   return (
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-      {users.map((user) => (
-        <article key={user.id} className="rounded-2xl border border-[color:var(--border)] bg-white/70 p-4 dark:bg-[color:var(--bg-soft)]/80">
+      {users.map((user) => {
+        const roleStyles = getUserRoleStyles(user.role);
+        return (
+        <article key={user.id} className={`rounded-2xl border border-[color:var(--border)] p-4 ${roleStyles.cardBg}`}>
           <div className="mb-3 flex items-center justify-between">
-            <span className="rounded-xl bg-[color:var(--brand-soft)] p-2">
-              <UserRound className="h-4 w-4 text-[color:var(--brand)]" />
+            <span className={`rounded-xl p-2 ${roleStyles.iconWrap}`}>
+              <UserRound className={`h-4 w-4 ${roleStyles.iconColor}`} />
             </span>
             <Badge value={titleCase(user.role)} />
           </div>
@@ -558,7 +591,7 @@ function UsersCards({ users, onEdit, onDelete }) {
             </button>
           </div>
         </article>
-      ))}
+      )})}
     </div>
   );
 }

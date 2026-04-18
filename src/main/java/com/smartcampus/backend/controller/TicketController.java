@@ -7,6 +7,9 @@ import com.smartcampus.backend.dto.TicketCreateRequestDTO;
 import com.smartcampus.backend.dto.TicketResolutionRequestDTO;
 import com.smartcampus.backend.dto.TicketResponseDTO;
 import com.smartcampus.backend.dto.TicketStatusUpdateRequestDTO;
+import com.smartcampus.backend.dto.TicketVisitEventCreateRequestDTO;
+import com.smartcampus.backend.dto.TicketVisitEventResponseDTO;
+import com.smartcampus.backend.dto.TicketVisitTimelineResponseDTO;
 import com.smartcampus.backend.service.TicketService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +33,8 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/tickets")
@@ -62,6 +67,13 @@ public class TicketController {
         return ticketService.listAssignedTickets(oidcUser, pageable);
     }
 
+    @GetMapping("/assigned/visits")
+    public List<TicketVisitTimelineResponseDTO> listAssignedVisitTimelines(
+            @AuthenticationPrincipal OidcUser oidcUser
+    ) {
+        return ticketService.listAssignedVisitTimelines(oidcUser);
+    }
+
     @PatchMapping("/{id}/status")
     public TicketResponseDTO updateStatus(
             @AuthenticationPrincipal OidcUser oidcUser,
@@ -87,6 +99,15 @@ public class TicketController {
             @Valid @RequestBody TicketCommentRequestDTO requestDTO
     ) {
         return ticketService.addComment(oidcUser, id, requestDTO);
+    }
+
+    @PostMapping("/{id}/visits")
+    public TicketVisitEventResponseDTO addVisitEvent(
+            @AuthenticationPrincipal OidcUser oidcUser,
+            @PathVariable Long id,
+            @Valid @RequestBody TicketVisitEventCreateRequestDTO requestDTO
+    ) {
+        return ticketService.addVisitEvent(oidcUser, id, requestDTO);
     }
 
     @PutMapping("/{ticketId}/comments/{commentId}")
@@ -128,4 +149,3 @@ public class TicketController {
                 .body(download.resource());
     }
 }
-

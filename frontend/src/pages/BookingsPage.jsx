@@ -1,15 +1,18 @@
 import axios from "axios";
-import { Filter, Plus, Search } from "lucide-react";
+import { Filter, Plus, QrCode, ScanLine, Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   createBooking,
+  fetchBookingCheckInQr,
   fetchBookings,
   fetchProfile,
   fetchResources,
   fetchUsers,
+  scanBookingCheckIn,
   updateBookingStatus,
 } from "../api/campusApi";
+import { API_BASE_URL } from "../api/client";
 import Badge from "../components/common/Badge";
 import Button from "../components/common/Button";
 import Card from "../components/common/Card";
@@ -29,6 +32,22 @@ const initialForm = {
   purpose: "",
 };
 
+const BOOKING_CARD_PALETTE = [
+  "bg-gradient-to-br from-blue-300/42 via-blue-200/32 to-blue-50/90 dark:from-blue-800/50 dark:via-blue-900/30 dark:to-[color:var(--bg-soft)]/90",
+  "bg-gradient-to-br from-violet-300/40 via-violet-200/30 to-violet-50/90 dark:from-violet-800/48 dark:via-violet-900/28 dark:to-[color:var(--bg-soft)]/90",
+  "bg-gradient-to-br from-fuchsia-300/40 via-fuchsia-200/30 to-fuchsia-50/90 dark:from-fuchsia-800/48 dark:via-fuchsia-900/28 dark:to-[color:var(--bg-soft)]/90",
+  "bg-gradient-to-br from-teal-300/40 via-teal-200/30 to-teal-50/90 dark:from-teal-800/48 dark:via-teal-900/28 dark:to-[color:var(--bg-soft)]/90",
+  "bg-gradient-to-br from-cyan-300/40 via-cyan-200/30 to-cyan-50/90 dark:from-cyan-800/48 dark:via-cyan-900/28 dark:to-[color:var(--bg-soft)]/90",
+  "bg-gradient-to-br from-indigo-300/40 via-indigo-200/30 to-indigo-50/90 dark:from-indigo-800/48 dark:via-indigo-900/28 dark:to-[color:var(--bg-soft)]/90",
+  "bg-gradient-to-br from-pink-300/40 via-pink-200/30 to-pink-50/90 dark:from-pink-800/48 dark:via-pink-900/28 dark:to-[color:var(--bg-soft)]/90",
+  "bg-gradient-to-br from-emerald-300/40 via-emerald-200/30 to-emerald-50/90 dark:from-emerald-800/48 dark:via-emerald-900/28 dark:to-[color:var(--bg-soft)]/90",
+];
+
+function getBookingCardStyle(item) {
+  const index = Math.abs(Number(item?.id) || 0) % BOOKING_CARD_PALETTE.length;
+  return BOOKING_CARD_PALETTE[index];
+}
+
 function BookingsPage() {
   const [searchParams] = useSearchParams();
   const [bookings, setBookings] = useState([]);
@@ -44,6 +63,12 @@ function BookingsPage() {
   const [form, setForm] = useState(initialForm);
   const [role, setRole] = useState("STUDENT");
   const [viewMode, setViewMode] = useState("table");
+  const [scanPayload, setScanPayload] = useState("");
+  const [scanLoading, setScanLoading] = useState(false);
+  const [qrModalOpen, setQrModalOpen] = useState(false);
+  const [qrLoading, setQrLoading] = useState(false);
+  const [qrData, setQrData] = useState(null);
+  const [qrBooking, setQrBooking] = useState(null);
   const { addToast } = useToast();
 
   useEffect(() => {
@@ -103,21 +128,34 @@ function BookingsPage() {
     loadData();
   }, [addToast]);
 
+  const canModerateBookings = role === "ADMIN" || role === "STAFF";
+  const canScanCheckIn = canModerateBookings;
+
   const filteredBookings = useMemo(() => {
-    return bookings.filter((item) => {
+    const scopedBookings =
+      canModerateBookings || !currentUser?.id
+        ? bookings
+        : bookings.filter((item) => Number(item.userId) === Number(currentUser.id));
+
+    return scopedBookings.filter((item) => {
       const text = [item.userName, item.resourceName, item.purpose ?? ""].join(" ").toLowerCase();
       const matchesQuery = text.includes(query.toLowerCase());
       const matchesStatus = statusFilter === "ALL" || item.status === statusFilter;
       return matchesQuery && matchesStatus;
     });
-  }, [bookings, query, statusFilter]);
+  }, [bookings, canModerateBookings, currentUser?.id, query, statusFilter]);
 
   function handleInput(event) {
     const { name, value } = event.target;
     setForm((current) => ({ ...current, [name]: value }));
   }
 
-  const canModerateBookings = role === "ADMIN" || role === "STAFF";
+  function canShowQr(item) {
+    if (item.status !== "APPROVED") return false;
+    if (canModerateBookings) return true;
+    if (!currentUser?.id) return false;
+    return Number(item.userId) === Number(currentUser.id);
+  }
 
   async function handleStatusUpdate(bookingId, status) {
     setUpdatingBookingId(bookingId);
@@ -194,6 +232,69 @@ function BookingsPage() {
     }
   }
 
+  async function handleOpenQr(item) {
+    setQrModalOpen(true);
+    setQrBooking(item);
+    setQrData(null);
+    setQrLoading(true);
+
+    try {
+      const response = await fetchBookingCheckInQr(item.id);
+      setQrData(response.data);
+    } catch (error) {
+      const status = error?.response?.status;
+      const messageFromApi = error?.response?.data?.message;
+      const notUpdatedBackend =
+        status === 404 && (messageFromApi === "Resource not found" || messageFromApi === "Not Found");
+
+      setQrModalOpen(false);
+      addToast({
+        type: "error",
+        title: "QR unavailable",
+        message: notUpdatedBackend
+          ? `QR endpoint is missing on API ${API_BASE_URL}. Restart backend with latest code or update VITE_API_BASE_URL.`
+          : messageFromApi || "Unable to load booking QR code.",
+      });
+    } finally {
+      setQrLoading(false);
+    }
+  }
+
+  async function handleScanCheckIn(event) {
+    event.preventDefault();
+    const payload = scanPayload.trim();
+    if (!payload) {
+      addToast({ type: "error", title: "Validation error", message: "Enter scanned QR payload before submitting." });
+      return;
+    }
+
+    setScanLoading(true);
+    try {
+      const response = await scanBookingCheckIn({ qrPayload: payload });
+      const result = response.data;
+      setBookings((current) =>
+        current.map((booking) => (booking.id === result.booking.id ? result.booking : booking))
+      );
+      setScanPayload("");
+
+      addToast({
+        type: "success",
+        title: result.alreadyCheckedIn ? "Attendance already marked" : "Attendance marked",
+        message: result.alreadyCheckedIn
+          ? "This booking has already been checked in."
+          : `Checked in ${result.booking.userName} for ${result.booking.resourceName}.`,
+      });
+    } catch (error) {
+      addToast({
+        type: "error",
+        title: "Scan failed",
+        message: error?.response?.data?.message || "Unable to process check-in QR.",
+      });
+    } finally {
+      setScanLoading(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
       <Card className="p-4 md:p-5">
@@ -204,7 +305,7 @@ function BookingsPage() {
               <input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search by user, resource, purpose"
+                placeholder={canModerateBookings ? "Search by user, resource, purpose" : "Search by resource or purpose"}
                 className="w-full bg-transparent text-sm outline-none placeholder:text-[color:var(--text-muted)]/70"
               />
             </label>
@@ -235,6 +336,25 @@ function BookingsPage() {
         </div>
       </Card>
 
+      {canScanCheckIn ? (
+        <Card className="p-4 md:p-5">
+          <form className="flex flex-col gap-3 md:flex-row md:items-end" onSubmit={handleScanCheckIn}>
+            <FormField label="QR Scanner Input" className="flex-1">
+              <input
+                value={scanPayload}
+                onChange={(event) => setScanPayload(event.target.value)}
+                placeholder="Paste scanned QR payload (example: SCBK-CHECKIN:...)"
+                className="w-full rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none dark:bg-[color:var(--bg-soft)]/70"
+              />
+            </FormField>
+            <Button type="submit" loading={scanLoading}>
+              <ScanLine className="h-4 w-4" />
+              Scan & Mark Attendance
+            </Button>
+          </form>
+        </Card>
+      ) : null}
+
       <Card className="p-4 md:p-5">
         {loading ? (
           <div className="space-y-3">
@@ -249,6 +369,8 @@ function BookingsPage() {
             bookings={filteredBookings}
             canModerateBookings={canModerateBookings}
             updatingBookingId={updatingBookingId}
+            canShowQr={canShowQr}
+            onShowQr={handleOpenQr}
             onStatusUpdate={handleStatusUpdate}
           />
         ) : (
@@ -256,6 +378,8 @@ function BookingsPage() {
             bookings={filteredBookings}
             canModerateBookings={canModerateBookings}
             updatingBookingId={updatingBookingId}
+            canShowQr={canShowQr}
+            onShowQr={handleOpenQr}
             onStatusUpdate={handleStatusUpdate}
           />
         )}
@@ -351,6 +475,37 @@ function BookingsPage() {
           </FormField>
         </form>
       </Modal>
+
+      <Modal
+        isOpen={qrModalOpen}
+        onClose={() => setQrModalOpen(false)}
+        title={qrBooking ? `Booking #${qrBooking.id} Check-in QR` : "Check-in QR"}
+        footer={
+          <div className="flex justify-end">
+            <Button variant="secondary" onClick={() => setQrModalOpen(false)}>
+              Close
+            </Button>
+          </div>
+        }
+      >
+        {qrLoading ? (
+          <LoadingSkeleton className="h-64 rounded-xl" />
+        ) : qrData ? (
+          <div className="space-y-3">
+            <div className="flex justify-center rounded-2xl border border-[color:var(--border)] bg-white p-3">
+              <img src={qrData.qrImageDataUri} alt="Booking check-in QR code" className="h-64 w-64 max-w-full object-contain" />
+            </div>
+            <p className="text-xs text-[color:var(--text-muted)] break-all">
+              Payload: <span className="font-semibold text-[color:var(--text)]">{qrData.qrPayload}</span>
+            </p>
+            <p className="text-xs text-[color:var(--text-muted)]">
+              Valid window: {formatDateTime(qrData.validFrom)} to {formatDateTime(qrData.validUntil)}
+            </p>
+          </div>
+        ) : (
+          <EmptyState title="QR not available" description="Could not load QR code for this booking." />
+        )}
+      </Modal>
     </div>
   );
 }
@@ -364,7 +519,7 @@ function FormField({ label, className = "", children }) {
   );
 }
 
-function BookingsTable({ bookings, canModerateBookings, updatingBookingId, onStatusUpdate }) {
+function BookingsTable({ bookings, canModerateBookings, updatingBookingId, canShowQr, onShowQr, onStatusUpdate }) {
   return (
     <div className="fine-scrollbar overflow-x-auto">
       <table className="min-w-full text-left text-sm">
@@ -389,6 +544,21 @@ function BookingsTable({ bookings, canModerateBookings, updatingBookingId, onSta
               <td className="py-3 text-xs text-[color:var(--text-muted)]">{item.purpose}</td>
               <td className="py-3">
                 <Badge value={item.status} />
+                {item.checkedInAt ? (
+                  <p className="mt-1 text-[11px] text-emerald-700 dark:text-emerald-300">
+                    Checked in: {formatDateTime(item.checkedInAt)}
+                  </p>
+                ) : null}
+                {canShowQr(item) ? (
+                  <button
+                    type="button"
+                    onClick={() => onShowQr(item)}
+                    className="mt-1 inline-flex items-center gap-1 text-[11px] font-semibold text-[color:var(--brand)] hover:underline"
+                  >
+                    <QrCode className="h-3.5 w-3.5" />
+                    Show QR
+                  </button>
+                ) : null}
               </td>
               {canModerateBookings ? (
                 <td className="py-3">
@@ -423,58 +593,75 @@ function BookingsTable({ bookings, canModerateBookings, updatingBookingId, onSta
   );
 }
 
-function BookingsCards({ bookings, canModerateBookings, updatingBookingId, onStatusUpdate }) {
+function BookingsCards({ bookings, canModerateBookings, updatingBookingId, canShowQr, onShowQr, onStatusUpdate }) {
   return (
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-      {bookings.map((item) => (
-        <article key={item.id} className="rounded-2xl border border-[color:var(--border)] bg-white/65 p-4 dark:bg-[color:var(--bg-soft)]/75">
-          <div className="flex items-start justify-between gap-2">
-            <div>
-              <p className="text-base font-semibold">{item.userName}</p>
-              <p className="mt-0.5 text-xs text-[color:var(--text-muted)]">{item.resourceName}</p>
+      {bookings.map((item) => {
+        const cardBg = getBookingCardStyle(item);
+        return (
+          <article key={item.id} className={`rounded-2xl border border-[color:var(--border)] p-4 ${cardBg}`}>
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <p className="text-base font-semibold">{item.userName}</p>
+                <p className="mt-0.5 text-xs text-[color:var(--text-muted)]">{item.resourceName}</p>
+              </div>
+              <Badge value={item.status} />
             </div>
-            <Badge value={item.status} />
-          </div>
 
-          <div className="mt-4 space-y-2 text-sm">
-            <p className="text-[color:var(--text-muted)]">
-              Start: <span className="font-semibold text-[color:var(--text)]">{formatDateTime(item.startTime)}</span>
-            </p>
-            <p className="text-[color:var(--text-muted)]">
-              End: <span className="font-semibold text-[color:var(--text)]">{formatDateTime(item.endTime)}</span>
-            </p>
-            <p className="text-[color:var(--text-muted)]">
-              Purpose: <span className="font-semibold text-[color:var(--text)]">{item.purpose}</span>
-            </p>
-          </div>
+            <div className="mt-4 space-y-2 text-sm">
+              <p className="text-[color:var(--text-muted)]">
+                Start: <span className="font-semibold text-[color:var(--text)]">{formatDateTime(item.startTime)}</span>
+              </p>
+              <p className="text-[color:var(--text-muted)]">
+                End: <span className="font-semibold text-[color:var(--text)]">{formatDateTime(item.endTime)}</span>
+              </p>
+              <p className="text-[color:var(--text-muted)]">
+                Purpose: <span className="font-semibold text-[color:var(--text)]">{item.purpose}</span>
+              </p>
+              {item.checkedInAt ? (
+                <p className="text-emerald-700 dark:text-emerald-300">
+                  Attendance: <span className="font-semibold">Checked in at {formatDateTime(item.checkedInAt)}</span>
+                </p>
+              ) : null}
+            </div>
 
-          {canModerateBookings ? (
             <div className="mt-4 flex items-center justify-end gap-2 border-t border-[color:var(--border)] pt-3">
-              {item.status === "PENDING" ? (
-                <>
-                  <Button
-                    size="sm"
-                    loading={updatingBookingId === item.id}
-                    onClick={() => onStatusUpdate(item.id, "APPROVED")}
-                  >
-                    Approve
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    loading={updatingBookingId === item.id}
-                    onClick={() => onStatusUpdate(item.id, "REJECTED")}
-                  >
-                    Reject
-                  </Button>
-                </>
-              ) : (
-                <span className="text-xs font-semibold text-[color:var(--text-muted)]">No action</span>
-              )}
+              {canShowQr(item) ? (
+                <Button size="sm" variant="secondary" onClick={() => onShowQr(item)}>
+                  <QrCode className="h-4 w-4" />
+                  Show QR
+                </Button>
+              ) : null}
             </div>
-          ) : null}
-        </article>
-      ))}
+
+            {canModerateBookings ? (
+              <div className="mt-4 flex items-center justify-end gap-2 border-t border-[color:var(--border)] pt-3">
+                {item.status === "PENDING" ? (
+                  <>
+                    <Button
+                      size="sm"
+                      loading={updatingBookingId === item.id}
+                      onClick={() => onStatusUpdate(item.id, "APPROVED")}
+                    >
+                      Approve
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      loading={updatingBookingId === item.id}
+                      onClick={() => onStatusUpdate(item.id, "REJECTED")}
+                    >
+                      Reject
+                    </Button>
+                  </>
+                ) : (
+                  <span className="text-xs font-semibold text-[color:var(--text-muted)]">No action</span>
+                )}
+              </div>
+            ) : null}
+          </article>
+        );
+      })}
     </div>
   );
 }

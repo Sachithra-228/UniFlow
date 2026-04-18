@@ -95,6 +95,10 @@ public class Ticket {
     @Builder.Default
     private List<TicketAttachment> attachments = new ArrayList<>();
 
+    @OneToMany(mappedBy = "ticket", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<TicketVisitEvent> visitEvents = new ArrayList<>();
+
     @PrePersist
     public void onCreate() {
         syncLegacyColumns();

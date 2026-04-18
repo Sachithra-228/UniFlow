@@ -36,6 +36,12 @@ function isServiceUnavailable(error) {
   return !error?.response || error.code === "ECONNABORTED" || error.code === "ERR_NETWORK";
 }
 
+function emitNotificationsChanged() {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("notifications:changed"));
+  }
+}
+
 export async function fetchUsers(params = { page: 0, size: 10 }) {
   try {
     const response = await api.get("/api/users", { params });
@@ -136,8 +142,23 @@ export async function fetchProfile() {
   }
 }
 
+export async function updateProfileName(payload) {
+  const response = await api.patch("/profile", payload);
+  return { data: response.data };
+}
+
 export async function updateBookingStatus(id, payload) {
   const response = await api.patch(`/api/bookings/${id}/status`, payload);
+  return { data: response.data };
+}
+
+export async function fetchBookingCheckInQr(id) {
+  const response = await api.get(`/api/bookings/${id}/check-in/qr`);
+  return { data: response.data };
+}
+
+export async function scanBookingCheckIn(payload) {
+  const response = await api.post("/api/bookings/check-in/scan", payload);
   return { data: response.data };
 }
 
@@ -183,6 +204,17 @@ export async function fetchMyTickets(params = { page: 0, size: 20 }) {
 export async function fetchAssignedTickets(params = { page: 0, size: 20 }) {
   const response = await api.get("/api/tickets/assigned", { params });
   return { ...fromPagePayload(response.data, params.size), isFallback: false };
+}
+
+export async function fetchAssignedTicketVisits() {
+  const response = await api.get("/api/tickets/assigned/visits");
+  const items = Array.isArray(response.data) ? response.data : [];
+  return { items };
+}
+
+export async function addTicketVisitEvent(ticketId, payload) {
+  const response = await api.post(`/api/tickets/${ticketId}/visits`, payload);
+  return { data: response.data };
 }
 
 export async function fetchAdminTickets(params = { page: 0, size: 20 }, status) {
@@ -239,12 +271,59 @@ export async function fetchMyNotifications(params = { page: 0, size: 50 }, optio
   return { ...fromPagePayload(response.data, params.size), isFallback: false };
 }
 
+export async function fetchUnreadNotificationCount() {
+  const response = await api.get("/api/notifications/my/unread-count");
+  return { count: Number(response?.data?.count ?? 0) };
+}
+
+export async function fetchCampusEvents(params = { page: 0, size: 50 }, options = {}) {
+  const query = { ...params };
+  if (options.mineOnly) {
+    query.mineOnly = true;
+  }
+  const response = await api.get("/api/events", { params: query });
+  return { ...fromPagePayload(response.data, params.size), isFallback: false };
+}
+
+export async function createCampusEvent(payload) {
+  const response = await api.post("/api/events", payload);
+  return { data: response.data };
+}
+
+export async function updateCampusEventStatus(eventId, payload) {
+  const response = await api.patch(`/api/events/${eventId}/status`, payload);
+  return { data: response.data };
+}
+
+export async function requestEventEnrollment(eventId, payload = {}) {
+  const response = await api.post(`/api/events/${eventId}/enrollments`, payload);
+  return { data: response.data };
+}
+
+export async function fetchMyEventEnrollments(params = { page: 0, size: 100 }) {
+  const response = await api.get("/api/events/enrollments/my", { params });
+  return { ...fromPagePayload(response.data, params.size), isFallback: false };
+}
+
+export async function fetchEventEnrollments(eventId) {
+  const response = await api.get(`/api/events/${eventId}/enrollments`);
+  const items = Array.isArray(response.data) ? response.data : [];
+  return { items };
+}
+
+export async function reviewEventEnrollment(eventId, enrollmentId, payload) {
+  const response = await api.patch(`/api/events/${eventId}/enrollments/${enrollmentId}/status`, payload);
+  return { data: response.data };
+}
+
 export async function markNotificationRead(id) {
   const response = await api.patch(`/api/notifications/${id}/read`);
+  emitNotificationsChanged();
   return { data: response.data };
 }
 
 export async function markAllNotificationsRead() {
   const response = await api.patch("/api/notifications/read-all");
+  emitNotificationsChanged();
   return { data: response.data };
 }

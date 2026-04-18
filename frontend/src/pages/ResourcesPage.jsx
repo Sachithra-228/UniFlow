@@ -19,6 +19,28 @@ const initialForm = {
   status: "AVAILABLE",
 };
 
+const RESOURCE_TYPE_STYLES = {
+  ROOM: {
+    cardBg:
+      "bg-gradient-to-br from-blue-300/35 via-blue-200/30 to-blue-50/85 dark:from-blue-800/40 dark:via-blue-900/24 dark:to-[color:var(--bg-soft)]/88",
+    typePill: "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-100",
+  },
+  LAB: {
+    cardBg:
+      "bg-gradient-to-br from-emerald-300/35 via-emerald-200/30 to-emerald-50/85 dark:from-emerald-800/40 dark:via-emerald-900/24 dark:to-[color:var(--bg-soft)]/88",
+    typePill: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-100",
+  },
+  EQUIPMENT: {
+    cardBg:
+      "bg-gradient-to-br from-amber-300/40 via-amber-200/32 to-amber-50/85 dark:from-amber-800/42 dark:via-amber-900/26 dark:to-[color:var(--bg-soft)]/88",
+    typePill: "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-100",
+  },
+};
+
+function getResourceTypeStyles(type) {
+  return RESOURCE_TYPE_STYLES[type] ?? RESOURCE_TYPE_STYLES.ROOM;
+}
+
 function ResourcesPage() {
   const [resources, setResources] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -424,15 +446,24 @@ function ResourceTable({ resources, onEdit, onDelete }) {
 function ResourceCards({ resources, onEdit, onDelete }) {
   return (
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-      {resources.map((item) => (
-        <article key={item.id} className="rounded-2xl border border-[color:var(--border)] bg-white/65 p-4 dark:bg-[color:var(--bg-soft)]/75">
+      {resources.map((item) => {
+        const typeStyles = getResourceTypeStyles(item.type);
+
+        return (
+        <article
+          key={item.id}
+          className={`rounded-2xl border border-[color:var(--border)] p-4 ${typeStyles.cardBg}`}
+        >
           <div className="flex items-start justify-between gap-2">
             <h4 className="text-base font-semibold">{item.name}</h4>
             <Badge value={item.status} />
           </div>
           <div className="mt-4 space-y-2 text-sm">
             <p className="text-[color:var(--text-muted)]">
-              Type: <span className="font-semibold text-[color:var(--text)]">{titleCase(item.type)}</span>
+              Type:{" "}
+              <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${typeStyles.typePill}`}>
+                {titleCase(item.type)}
+              </span>
             </p>
             <p className="text-[color:var(--text-muted)]">
               Capacity: <span className="font-semibold text-[color:var(--text)]">{item.capacity}</span>
@@ -461,7 +492,7 @@ function ResourceCards({ resources, onEdit, onDelete }) {
             </button>
           </div>
         </article>
-      ))}
+      )})}
     </div>
   );
 }

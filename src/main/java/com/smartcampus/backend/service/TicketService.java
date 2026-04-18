@@ -9,11 +9,16 @@ import com.smartcampus.backend.dto.TicketCreateRequestDTO;
 import com.smartcampus.backend.dto.TicketResolutionRequestDTO;
 import com.smartcampus.backend.dto.TicketResponseDTO;
 import com.smartcampus.backend.dto.TicketStatusUpdateRequestDTO;
+import com.smartcampus.backend.dto.TicketVisitEventCreateRequestDTO;
+import com.smartcampus.backend.dto.TicketVisitEventResponseDTO;
+import com.smartcampus.backend.dto.TicketVisitTimelineResponseDTO;
 import com.smartcampus.backend.entity.Resource;
 import com.smartcampus.backend.entity.Ticket;
 import com.smartcampus.backend.entity.TicketAttachment;
 import com.smartcampus.backend.entity.TicketComment;
 import com.smartcampus.backend.entity.TicketStatus;
+import com.smartcampus.backend.entity.TicketVisitEvent;
+import com.smartcampus.backend.entity.TicketVisitEventType;
 import com.smartcampus.backend.entity.User;
 import com.smartcampus.backend.entity.UserRole;
 import com.smartcampus.backend.exception.ResourceNotFoundException;
@@ -21,6 +26,7 @@ import com.smartcampus.backend.repository.ResourceRepository;
 import com.smartcampus.backend.repository.TicketAttachmentRepository;
 import com.smartcampus.backend.repository.TicketCommentRepository;
 import com.smartcampus.backend.repository.TicketRepository;
+import com.smartcampus.backend.repository.TicketVisitEventRepository;
 import com.smartcampus.backend.repository.UserRepository;
 import lombok.Builder;
 import lombok.RequiredArgsConstructor;
@@ -33,7 +39,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -42,6 +50,7 @@ public class TicketService {
     private final TicketRepository ticketRepository;
     private final TicketCommentRepository ticketCommentRepository;
     private final TicketAttachmentRepository ticketAttachmentRepository;
+    private final TicketVisitEventRepository ticketVisitEventRepository;
     private final UserRepository userRepository;
     private final ResourceRepository resourceRepository;
     private final CurrentUserService currentUserService;
@@ -216,6 +225,104 @@ public class TicketService {
         ticket.setUpdatedAt(LocalDateTime.now());
         ticketRepository.save(ticket);
         return toCommentResponse(savedComment);
+    }
+
+    @Transactional(readOnly = true)
+    public List<TicketVisitTimelineResponseDTO> listAssignedVisitTimelines(OidcUser oidcUser) {
+        User actor = currentUserService.requireCurrentUser(oidcUser);
+        UserRole role = currentUserService.roleOf(actor);
+
+        List<Ticket> visibleTickets;
+        if (role == UserRole.ADMIN) {
+            visibleTickets = ticketRepository.findAll();
+        } else if (role == UserRole.TECHNICIAN) {
+            visibleTickets = ticketRepository.findByAssignedTechnicianId(actor.getId(), Pageable.unpaged()).getContent();
+        } else {
+            throw new AccessDeniedException("Technician or admin role required");
+        }
+
+        if (visibleTickets.isEmpty()) {
+            return List.of();
+        }
+
+        List<Long> ticketIds = visibleTickets.stream().map(Ticket::getId).toList();
+        List<TicketVisitEvent> events = ticketVisitEventRepository.findByTicketIdInOrderByCreatedAtAsc(ticketIds);
+        Map<Long, List<TicketVisitEventResponseDTO>> grouped = new LinkedHashMap<>();
+
+        for (Long ticketId : ticketIds) {
+            grouped.put(ticketId, new java.util.ArrayList<>());
+        }
+
+        for (TicketVisitEvent event : events) {
+            Long ticketId = event.getTicket().getId();
+            List<TicketVisitEventResponseDTO> bucket = grouped.get(ticketId);
+            if (bucket == null) {
+                continue;
+            }
+            bucket.add(toVisitResponse(event));
+        }
+
+        return grouped.entrySet().stream()
+                .map(entry -> TicketVisitTimelineResponseDTO.builder()
+                        .ticketId(entry.getKey())
+                        .events(entry.getValue())
+                        .build())
+                .toList();
+    }
+
+    @Transactional
+    public TicketVisitEventResponseDTO addVisitEvent(
+            OidcUser oidcUser,
+            Long ticketId,
+            TicketVisitEventCreateRequestDTO requestDTO
+    ) {
+        User actor = currentUserService.requireCurrentUser(oidcUser);
+        UserRole role = currentUserService.roleOf(actor);
+        if (role != UserRole.TECHNICIAN && role != UserRole.ADMIN) {
+            throw new AccessDeniedException("Technician or admin role required");
+        }
+
+        Ticket ticket = getTicketOrThrow(ticketId);
+        if (role == UserRole.TECHNICIAN) {
+            validateAssignedTechnician(ticket, actor);
+        }
+
+        if (ticket.getStatus() == TicketStatus.CLOSED || ticket.getStatus() == TicketStatus.REJECTED) {
+            throw new IllegalStateException("Cannot log visit event for closed or rejected ticket");
+        }
+
+        TicketVisitEventType eventType = requestDTO.getEventType();
+        if (eventType == null) {
+            throw new IllegalArgumentException("Visit event type is required");
+        }
+
+        TicketStatus previousStatus = ticket.getStatus();
+        if (eventType == TicketVisitEventType.WORK_STARTED && ticket.getStatus() == TicketStatus.OPEN) {
+            ticket.setStatus(TicketStatus.IN_PROGRESS);
+        } else if (eventType == TicketVisitEventType.WORK_COMPLETED
+                && ticket.getStatus() != TicketStatus.RESOLVED
+                && ticket.getStatus() != TicketStatus.CLOSED) {
+            ticket.setStatus(TicketStatus.RESOLVED);
+        }
+
+        ticket.setUpdatedAt(LocalDateTime.now());
+        Ticket savedTicket = ticketRepository.save(ticket);
+
+        TicketVisitEvent event = TicketVisitEvent.builder()
+                .ticket(savedTicket)
+                .technician(actor)
+                .eventType(eventType)
+                .note(normalizeOptional(requestDTO.getNote()))
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        TicketVisitEvent saved = ticketVisitEventRepository.save(event);
+
+        if (previousStatus != savedTicket.getStatus()) {
+            notificationService.notifyTicketStatusUpdated(savedTicket, previousStatus);
+        }
+
+        return toVisitResponse(saved);
     }
 
     @Transactional
@@ -400,6 +507,18 @@ public class TicketService {
                 .comment(comment.getComment())
                 .createdAt(comment.getCreatedAt())
                 .updatedAt(comment.getUpdatedAt())
+                .build();
+    }
+
+    private TicketVisitEventResponseDTO toVisitResponse(TicketVisitEvent event) {
+        return TicketVisitEventResponseDTO.builder()
+                .id(event.getId())
+                .ticketId(event.getTicket().getId())
+                .technicianId(event.getTechnician().getId())
+                .technicianName(event.getTechnician().getName())
+                .eventType(event.getEventType())
+                .note(event.getNote())
+                .createdAt(event.getCreatedAt())
                 .build();
     }
 

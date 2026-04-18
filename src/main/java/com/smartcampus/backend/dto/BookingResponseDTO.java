@@ -23,5 +23,8 @@ public class BookingResponseDTO {
     private LocalDateTime endTime;
     private BookingStatus status;
     private String purpose;
+    private boolean checkInQrGenerated;
+    private LocalDateTime checkedInAt;
+    private String checkedInByName;
     private LocalDateTime createdAt;
 }

@@ -46,6 +46,22 @@ const initialCreateForm = {
   attachments: [],
 };
 
+const TICKET_CARD_PALETTE = [
+  "bg-gradient-to-br from-sky-300/42 via-sky-200/32 to-sky-50/90 dark:from-sky-800/50 dark:via-sky-900/30 dark:to-[color:var(--bg-soft)]/90",
+  "bg-gradient-to-br from-emerald-300/40 via-emerald-200/30 to-emerald-50/90 dark:from-emerald-800/48 dark:via-emerald-900/28 dark:to-[color:var(--bg-soft)]/90",
+  "bg-gradient-to-br from-violet-300/40 via-violet-200/30 to-violet-50/90 dark:from-violet-800/48 dark:via-violet-900/28 dark:to-[color:var(--bg-soft)]/90",
+  "bg-gradient-to-br from-amber-300/42 via-amber-200/32 to-amber-50/90 dark:from-amber-800/50 dark:via-amber-900/30 dark:to-[color:var(--bg-soft)]/90",
+  "bg-gradient-to-br from-rose-300/40 via-rose-200/30 to-rose-50/90 dark:from-rose-800/48 dark:via-rose-900/28 dark:to-[color:var(--bg-soft)]/90",
+  "bg-gradient-to-br from-indigo-300/40 via-indigo-200/30 to-indigo-50/90 dark:from-indigo-800/48 dark:via-indigo-900/28 dark:to-[color:var(--bg-soft)]/90",
+  "bg-gradient-to-br from-teal-300/40 via-teal-200/30 to-teal-50/90 dark:from-teal-800/48 dark:via-teal-900/28 dark:to-[color:var(--bg-soft)]/90",
+  "bg-gradient-to-br from-fuchsia-300/40 via-fuchsia-200/30 to-fuchsia-50/90 dark:from-fuchsia-800/48 dark:via-fuchsia-900/28 dark:to-[color:var(--bg-soft)]/90",
+];
+
+function getTicketCardStyle(ticket) {
+  const index = Math.abs(Number(ticket?.id) || 0) % TICKET_CARD_PALETTE.length;
+  return TICKET_CARD_PALETTE[index];
+}
+
 function TicketsPage() {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState(null);
@@ -144,7 +160,11 @@ function TicketsPage() {
   }
 
   function handleCreateFormChange(event) {
-    const { name, value } = event.target;
+    const { name } = event.target;
+    let { value } = event.target;
+    if (name === "preferredContactDetails") {
+      value = value.replace(/\D/g, "").slice(0, 10);
+    }
     setCreateForm((current) => ({ ...current, [name]: value }));
   }
 
@@ -171,6 +191,15 @@ function TicketsPage() {
         type: "error",
         title: "Validation failed",
         message: "Description and preferred contact details are required.",
+      });
+      return;
+    }
+
+    if (!/^\d{10}$/.test(createForm.preferredContactDetails.trim())) {
+      addToast({
+        type: "error",
+        title: "Validation failed",
+        message: "Preferred contact details must be exactly 10 digits.",
       });
       return;
     }
@@ -686,12 +715,18 @@ function TicketsPage() {
 
           <FormField label="Preferred Contact Details">
             <input
+              type="tel"
+              inputMode="numeric"
+              maxLength={10}
               name="preferredContactDetails"
               value={createForm.preferredContactDetails}
               onChange={handleCreateFormChange}
-              placeholder="Phone/email with preferred time"
+              placeholder="10-digit phone number"
               className="w-full rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm outline-none dark:bg-[color:var(--bg-soft)]/70"
             />
+            <p className="mt-1 text-xs text-[color:var(--text-muted)]">
+              Digits only, exactly 10 numbers.
+            </p>
           </FormField>
 
           <FormField label="Image Attachments (Up to 3)">
@@ -797,36 +832,39 @@ function TicketsTable({ tickets, onOpenTicketManage }) {
 function TicketsCards({ tickets, onOpenTicketManage }) {
   return (
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-      {tickets.map((ticket) => (
-        <article
-          key={ticket.id}
-          className="rounded-2xl border border-[color:var(--border)] bg-white/70 p-4 transition hover:-translate-y-0.5 hover:shadow-[0_14px_28px_-22px_rgba(15,23,42,0.55)] dark:bg-[color:var(--bg-soft)]/80"
-        >
-          <div className="mb-3 flex items-center justify-between">
-            <p className="text-sm font-semibold">Ticket #{ticket.id}</p>
-            <Badge value={ticket.status} />
-          </div>
-          <p className="line-clamp-3 text-sm">{ticket.description}</p>
-          <div className="mt-3 flex flex-wrap gap-1">
-            <Badge value={ticket.priority} />
-            <Badge value={ticket.category} />
-          </div>
-          <div className="mt-3 space-y-1 text-xs text-[color:var(--text-muted)]">
-            <p>By: {ticket.createdByName || "-"}</p>
-            <p>Assigned: {ticket.assignedTechnicianName || "Unassigned"}</p>
-            <p>Created: {formatDateTime(ticket.createdAt)}</p>
-          </div>
-          <div className="mt-4 border-t border-[color:var(--border)] pt-3">
-            <button
-              type="button"
-              onClick={() => onOpenTicketManage(ticket.id)}
-              className="inline-flex items-center gap-1 rounded-lg border border-[color:var(--border)] px-2.5 py-1.5 text-xs font-semibold text-[color:var(--text)] hover:bg-black/5 dark:hover:bg-white/10"
-            >
-              Open Ticket
-            </button>
-          </div>
-        </article>
-      ))}
+      {tickets.map((ticket) => {
+        const cardBg = getTicketCardStyle(ticket);
+        return (
+          <article
+            key={ticket.id}
+            className={`rounded-2xl border border-[color:var(--border)] p-4 transition hover:-translate-y-0.5 hover:shadow-[0_14px_28px_-22px_rgba(15,23,42,0.55)] ${cardBg}`}
+          >
+            <div className="mb-3 flex items-center justify-between">
+              <p className="text-sm font-semibold">Ticket #{ticket.id}</p>
+              <Badge value={ticket.status} />
+            </div>
+            <p className="line-clamp-3 text-sm">{ticket.description}</p>
+            <div className="mt-3 flex flex-wrap gap-1">
+              <Badge value={ticket.priority} />
+              <Badge value={ticket.category} />
+            </div>
+            <div className="mt-3 space-y-1 text-xs text-[color:var(--text-muted)]">
+              <p>By: {ticket.createdByName || "-"}</p>
+              <p>Assigned: {ticket.assignedTechnicianName || "Unassigned"}</p>
+              <p>Created: {formatDateTime(ticket.createdAt)}</p>
+            </div>
+            <div className="mt-4 border-t border-[color:var(--border)] pt-3">
+              <button
+                type="button"
+                onClick={() => onOpenTicketManage(ticket.id)}
+                className="inline-flex items-center gap-1 rounded-lg border border-[color:var(--border)] px-2.5 py-1.5 text-xs font-semibold text-[color:var(--text)] hover:bg-black/5 dark:hover:bg-white/10"
+              >
+                Open Ticket
+              </button>
+            </div>
+          </article>
+        );
+      })}
     </div>
   );
 }

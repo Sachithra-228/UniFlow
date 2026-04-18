@@ -1,19 +1,24 @@
 import {
   BellRing,
   BookCopy,
+  CalendarDays,
   ClipboardList,
+  GraduationCap,
+  Gauge,
   LayoutDashboard,
   Link2,
+  ListFilter,
   LogOut,
   PanelLeftClose,
+  Route,
   UserCircle2,
   Wrench,
   UsersRound,
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { NavLink, useLocation, useNavigate } from "react-router-dom";
-import { fetchMyNotifications, fetchProfile, logoutUser } from "../api/campusApi";
+import { NavLink, useNavigate } from "react-router-dom";
+import { fetchProfile, logoutUser } from "../api/campusApi";
 import Button from "../components/common/Button";
 import Modal from "../components/common/Modal";
 import { useToast } from "../hooks/useToast";
@@ -32,6 +37,8 @@ function buildRoleNavItems(unreadCount) {
     STUDENT: [
       { to: "/student/dashboard", label: "Dashboard", icon: LayoutDashboard },
       { to: "/bookings", label: "Bookings", icon: BookCopy },
+      { to: "/enrollments", label: "Enrollments", icon: GraduationCap },
+      { to: "/calendar", label: "Calendar", icon: CalendarDays },
       { to: "/tickets", label: "Tickets", icon: ClipboardList },
       notificationItem,
       { to: "/profile", label: "Profile", icon: UserCircle2 },
@@ -39,12 +46,17 @@ function buildRoleNavItems(unreadCount) {
     STAFF: [
       { to: "/staff/dashboard", label: "Dashboard", icon: LayoutDashboard },
       { to: "/bookings", label: "Bookings", icon: BookCopy },
+      { to: "/enrollments", label: "Enrollments", icon: GraduationCap },
+      { to: "/calendar", label: "Calendar", icon: CalendarDays },
       { to: "/tickets", label: "Tickets", icon: ClipboardList },
       notificationItem,
       { to: "/profile", label: "Profile", icon: UserCircle2 },
     ],
     TECHNICIAN: [
       { to: "/technician/dashboard", label: "Dashboard", icon: LayoutDashboard },
+      { to: "/technician/sla", label: "SLA Monitor", icon: Gauge },
+      { to: "/technician/queue", label: "My Queue", icon: ListFilter },
+      { to: "/technician/visits", label: "Field Visits", icon: Route },
       { to: "/tickets", label: "Tickets", icon: ClipboardList },
       { to: "/bookings", label: "Bookings", icon: BookCopy },
       notificationItem,
@@ -54,6 +66,8 @@ function buildRoleNavItems(unreadCount) {
       { to: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
       { to: "/resources", label: "Resources", icon: Wrench },
       { to: "/bookings", label: "Bookings", icon: BookCopy },
+      { to: "/enrollments", label: "Enrollments", icon: GraduationCap },
+      { to: "/calendar", label: "Calendar", icon: CalendarDays },
       { to: "/tickets", label: "Tickets", icon: ClipboardList },
       { to: "/admin/link-requests", label: "Link Requests", icon: Link2 },
       { to: "/users", label: "Users", icon: UsersRound },
@@ -63,12 +77,10 @@ function buildRoleNavItems(unreadCount) {
   };
 }
 
-function Sidebar({ isMobileOpen, onClose, onCollapse, isCollapsed }) {
-  const location = useLocation();
+function Sidebar({ isMobileOpen, onClose, onCollapse, isCollapsed, unreadCount = 0 }) {
   const navigate = useNavigate();
   const { addToast } = useToast();
   const [role, setRole] = useState(null);
-  const [unreadCount, setUnreadCount] = useState(0);
   const [logoutModalOpen, setLogoutModalOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
 
@@ -77,17 +89,12 @@ function Sidebar({ isMobileOpen, onClose, onCollapse, isCollapsed }) {
 
     async function loadNavigationState() {
       try {
-        const [profileResponse, unreadResponse] = await Promise.all([
-          fetchProfile(),
-          fetchMyNotifications({ page: 0, size: 1 }, { unreadOnly: true }),
-        ]);
+        const profileResponse = await fetchProfile();
         if (!mounted) return;
         setRole(normalizeRole(profileResponse?.data?.role) ?? "STUDENT");
-        setUnreadCount(unreadResponse.totalElements ?? 0);
       } catch (error) {
         if (!mounted) return;
         setRole("STUDENT");
-        setUnreadCount(0);
       }
     }
 
@@ -95,7 +102,7 @@ function Sidebar({ isMobileOpen, onClose, onCollapse, isCollapsed }) {
     return () => {
       mounted = false;
     };
-  }, [location.pathname]);
+  }, []);
 
   const navItems = useMemo(() => {
     if (!role) return [];
@@ -164,7 +171,7 @@ function Sidebar({ isMobileOpen, onClose, onCollapse, isCollapsed }) {
             <Button variant="ghost" onClick={() => setLogoutModalOpen(false)} disabled={loggingOut}>
               Cancel
             </Button>
-            <Button variant="danger" onClick={handleConfirmLogout} loading={loggingOut}>
+            <Button onClick={handleConfirmLogout} loading={loggingOut}>
               Logout
             </Button>
           </div>
@@ -249,7 +256,7 @@ function SidebarBody({ navItems, role, isCollapsed = false, isMobile = false, on
           type="button"
           onClick={onRequestLogout}
           className={cn(
-            "flex w-full items-center gap-3 rounded-xl border border-rose-300/50 bg-rose-50/70 px-3 py-2.5 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 dark:border-rose-500/35 dark:bg-rose-500/10 dark:text-rose-200 dark:hover:bg-rose-500/20",
+            "flex w-full items-center gap-3 rounded-xl border border-[color:var(--border)] bg-white/70 px-3 py-2.5 text-sm font-semibold text-[color:var(--text)] transition hover:bg-black/5 dark:bg-[color:var(--bg-soft)]/80 dark:hover:bg-white/5",
             isCollapsed && !isMobile && "justify-center px-2"
           )}
         >

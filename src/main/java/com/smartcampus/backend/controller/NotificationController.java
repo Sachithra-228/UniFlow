@@ -34,6 +34,11 @@ public class NotificationController {
         return notificationService.getMyNotifications(oidcUser, pageable, unreadOnly);
     }
 
+    @GetMapping("/my/unread-count")
+    public Map<String, Long> getUnreadCount(@AuthenticationPrincipal OidcUser oidcUser) {
+        return Map.of("count", notificationService.getUnreadCount(oidcUser));
+    }
+
     @PatchMapping("/{id}/read")
     public NotificationResponseDTO markRead(
             @AuthenticationPrincipal OidcUser oidcUser,
@@ -48,4 +53,3 @@ public class NotificationController {
         return Map.of("updatedCount", updatedCount);
     }
 }
-

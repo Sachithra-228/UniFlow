@@ -3,6 +3,9 @@ package com.smartcampus.backend.service;
 import com.smartcampus.backend.dto.NotificationResponseDTO;
 import com.smartcampus.backend.entity.Booking;
 import com.smartcampus.backend.entity.BookingStatus;
+import com.smartcampus.backend.entity.CampusEvent;
+import com.smartcampus.backend.entity.EventEnrollment;
+import com.smartcampus.backend.entity.EventEnrollmentStatus;
 import com.smartcampus.backend.entity.Notification;
 import com.smartcampus.backend.entity.NotificationType;
 import com.smartcampus.backend.entity.Ticket;
@@ -39,6 +42,12 @@ public class NotificationService {
                 ? notificationRepository.findByUserIdAndReadStatusOrderByCreatedAtDesc(actor.getId(), false, pageable)
                 : notificationRepository.findByUserIdOrderByCreatedAtDesc(actor.getId(), pageable);
         return page.map(this::toResponse);
+    }
+
+    @Transactional(readOnly = true)
+    public long getUnreadCount(OidcUser oidcUser) {
+        User actor = currentUserService.requireCurrentUser(oidcUser);
+        return notificationRepository.countByUserIdAndReadStatus(actor.getId(), false);
     }
 
     @Transactional
@@ -127,6 +136,65 @@ public class NotificationService {
         String message = "Booking #" + booking.getId() + " is now " + booking.getStatus()
                 + " for resource " + booking.getResource().getName();
         createNotification(booking.getUser(), "Booking Status Updated", message, NotificationType.INFO);
+    }
+
+    @Transactional
+    public void notifyCampusEventCreated(CampusEvent event) {
+        List<User> students = userRepository.findByRoleIgnoreCase(UserRole.STUDENT.name());
+        for (User student : students) {
+            createNotification(
+                    student,
+                    "New Campus Event",
+                    event.getTitle() + " is open for enrollment (" + event.getLocation() + ")",
+                    NotificationType.INFO
+            );
+        }
+    }
+
+    @Transactional
+    public void notifyEventEnrollmentRequested(EventEnrollment enrollment) {
+        CampusEvent event = enrollment.getEvent();
+        User actor = enrollment.getStudent();
+
+        createNotification(
+                event.getCreatedBy(),
+                "New Enrollment Request",
+                actor.getName() + " requested enrollment for " + event.getTitle(),
+                NotificationType.ALERT
+        );
+
+        List<User> admins = userRepository.findByRoleIgnoreCase(UserRole.ADMIN.name());
+        for (User admin : admins) {
+            if (admin.getId().equals(event.getCreatedBy().getId())) {
+                continue;
+            }
+            createNotification(
+                    admin,
+                    "Enrollment Request Alert",
+                    actor.getName() + " requested enrollment for " + event.getTitle(),
+                    NotificationType.INFO
+            );
+        }
+    }
+
+    @Transactional
+    public void notifyEventEnrollmentReviewed(EventEnrollment enrollment) {
+        if (enrollment.getStatus() != EventEnrollmentStatus.APPROVED
+                && enrollment.getStatus() != EventEnrollmentStatus.REJECTED) {
+            return;
+        }
+
+        String title = enrollment.getStatus() == EventEnrollmentStatus.APPROVED
+                ? "Enrollment Approved"
+                : "Enrollment Rejected";
+        String message = "Your request for " + enrollment.getEvent().getTitle()
+                + " is now " + enrollment.getStatus();
+
+        if (enrollment.getReviewNote() != null && !enrollment.getReviewNote().isBlank()) {
+            message = message + " (Note: " + enrollment.getReviewNote() + ")";
+        }
+
+        createNotification(enrollment.getStudent(), title, message, NotificationType.ALERT);
     }
 
     private void createNotification(User user, String title, String message, NotificationType type) {

@@ -8,8 +8,10 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -23,47 +25,42 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "bookings")
-public class Booking {
+@Table(
+        name = "ticket_visit_events",
+        indexes = {
+                @Index(name = "idx_ticket_visit_ticket_created", columnList = "ticket_id, created_at"),
+                @Index(name = "idx_ticket_visit_technician_created", columnList = "technician_id, created_at")
+        }
+)
+public class TicketVisitEvent {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+    @JoinColumn(name = "ticket_id", nullable = false)
+    private Ticket ticket;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "resource_id", nullable = false)
-    private Resource resource;
-
-    @Column(name = "start_time", nullable = false)
-    private LocalDateTime startTime;
-
-    @Column(name = "end_time", nullable = false)
-    private LocalDateTime endTime;
+    @JoinColumn(name = "technician_id", nullable = false)
+    private User technician;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private BookingStatus status;
+    @Column(name = "event_type", nullable = false)
+    private TicketVisitEventType eventType;
 
-    @Column
-    private String purpose;
-
-    @Column(name = "qr_check_in_token", length = 64, unique = true)
-    private String qrCheckInToken;
-
-    @Column(name = "qr_generated_at")
-    private LocalDateTime qrGeneratedAt;
-
-    @Column(name = "checked_in_at")
-    private LocalDateTime checkedInAt;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "checked_in_by_user_id")
-    private User checkedInByUser;
+    @Column(name = "note", length = 1000)
+    private String note;
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
+
+    @PrePersist
+    public void onCreate() {
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
+        }
+    }
 }
+

@@ -4,6 +4,7 @@ import com.smartcampus.backend.entity.TicketCategory;
 import com.smartcampus.backend.entity.TicketPriority;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 import org.springframework.web.multipart.MultipartFile;
@@ -30,9 +31,8 @@ public class TicketCreateRequestDTO {
     private TicketPriority priority;
 
     @NotBlank
-    @Size(max = 300)
+    @Pattern(regexp = "\\d{10}", message = "Preferred contact details must be exactly 10 digits")
     private String preferredContactDetails;
 
     private List<MultipartFile> attachments = new ArrayList<>();
 }
-

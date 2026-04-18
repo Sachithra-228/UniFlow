@@ -1,4 +1,4 @@
-﻿import { AlertTriangle, ArrowRight, Clock3, KeyRound, Mail, ShieldCheck, UserCircle2 } from "lucide-react";
+import { AlertTriangle, ArrowRight, Check, Clock3, KeyRound, Mail, PencilLine, ShieldCheck, UserCircle2, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -7,6 +7,7 @@ import {
   fetchBookings,
   fetchProfile,
   getGoogleLoginUrl,
+  updateProfileName,
 } from "../api/campusApi";
 import Badge from "../components/common/Badge";
 import Button from "../components/common/Button";
@@ -162,6 +163,9 @@ function ProfilePage() {
   const [opsHealth, setOpsHealth] = useState(null);
   const [slaRisks, setSlaRisks] = useState([]);
   const [approvalRanking, setApprovalRanking] = useState([]);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editedName, setEditedName] = useState("");
+  const [isSavingName, setIsSavingName] = useState(false);
   const { addToast } = useToast();
 
   useEffect(() => {
@@ -215,6 +219,7 @@ function ProfilePage() {
 
         const resolvedProfile = response.data;
         setProfile(resolvedProfile);
+        setEditedName(resolvedProfile?.name ?? "");
         setIsFallback(response.isFallback);
 
         if (normalizeRole(resolvedProfile?.role) === "ADMIN") {
@@ -250,6 +255,53 @@ function ProfilePage() {
   }, [addToast]);
 
   const isAdmin = useMemo(() => normalizeRole(profile?.role) === "ADMIN", [profile]);
+
+  async function handleSaveName() {
+    const nextName = editedName.trim();
+    if (!nextName) {
+      addToast({
+        type: "warning",
+        title: "Name required",
+        message: "Please enter your name before saving.",
+      });
+      return;
+    }
+
+    if (nextName.length > 120) {
+      addToast({
+        type: "warning",
+        title: "Name too long",
+        message: "Name must be 120 characters or fewer.",
+      });
+      return;
+    }
+
+    try {
+      setIsSavingName(true);
+      const response = await updateProfileName({ name: nextName });
+      setProfile(response.data);
+      setEditedName(response.data?.name ?? nextName);
+      setIsEditingName(false);
+      addToast({
+        type: "success",
+        title: "Profile updated",
+        message: "Your display name was updated.",
+      });
+    } catch {
+      addToast({
+        type: "error",
+        title: "Update failed",
+        message: "Unable to update your name right now.",
+      });
+    } finally {
+      setIsSavingName(false);
+    }
+  }
+
+  function handleCancelNameEdit() {
+    setEditedName(profile?.name ?? "");
+    setIsEditingName(false);
+  }
 
   if (loading) {
     return (
@@ -292,7 +344,50 @@ function ProfilePage() {
             </span>
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[color:var(--text-muted)]">Authenticated Identity</p>
-              <h3 className="mt-1 text-2xl font-bold">{profile?.name}</h3>
+              {isEditingName ? (
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <input
+                    type="text"
+                    value={editedName}
+                    onChange={(event) => setEditedName(event.target.value)}
+                    maxLength={120}
+                    className="h-10 min-w-[240px] rounded-xl border border-[color:var(--border)] bg-white px-3 text-base font-semibold outline-none transition focus:border-[color:var(--brand)] dark:bg-[color:var(--bg-soft)]"
+                    placeholder="Enter your name"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleSaveName}
+                    disabled={isSavingName}
+                    className="inline-flex h-10 items-center gap-1 rounded-xl border border-emerald-400/60 bg-emerald-500/15 px-3 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-500/25 disabled:cursor-not-allowed disabled:opacity-60 dark:text-emerald-100"
+                  >
+                    <Check className="h-4 w-4" />
+                    Save
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCancelNameEdit}
+                    disabled={isSavingName}
+                    className="inline-flex h-10 items-center gap-1 rounded-xl border border-[color:var(--border)] px-3 text-sm font-semibold transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60 dark:hover:bg-[color:var(--bg-soft)]"
+                  >
+                    <X className="h-4 w-4" />
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <div className="mt-2 flex flex-wrap items-center gap-3">
+                  <h3 className="text-2xl font-bold">{profile?.name}</h3>
+                  {!isFallback ? (
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingName(true)}
+                      className="inline-flex h-9 items-center gap-1 rounded-xl border border-[color:var(--border)] px-3 text-sm font-semibold text-[color:var(--text-muted)] transition hover:bg-white hover:text-[color:var(--text)] dark:hover:bg-[color:var(--bg-soft)]"
+                    >
+                      <PencilLine className="h-4 w-4" />
+                      Edit name
+                    </button>
+                  ) : null}
+                </div>
+              )}
             </div>
           </div>
 
@@ -312,21 +407,21 @@ function ProfilePage() {
       </Card>
 
       {isAdmin ? (
-        <Card className="max-w-6xl p-6 md:p-8">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <Card className="w-full p-6 md:p-8">
+          <div className="flex flex-col gap-4">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[color:var(--text-muted)]">Admin Insights</p>
               <h3 className="mt-1 text-2xl font-bold">Operational Intelligence Tabs</h3>
             </div>
 
-            <div className="flex flex-wrap gap-2">
+            <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-3">
               {ADMIN_TABS.map((tab) => (
                 <button
                   key={tab.key}
                   type="button"
                   onClick={() => setAdminTab(tab.key)}
                   className={[
-                    "rounded-xl border px-3 py-2 text-sm font-semibold transition",
+                    "w-full rounded-xl border px-3 py-2 text-center text-sm font-semibold transition",
                     adminTab === tab.key
                       ? "border-cyan-400 bg-cyan-500/15 text-cyan-800 dark:text-cyan-100"
                       : "border-[color:var(--border)] bg-white/70 text-[color:var(--text-muted)] hover:bg-white dark:bg-[color:var(--bg-soft)]/80 dark:hover:bg-[color:var(--bg-soft)]",

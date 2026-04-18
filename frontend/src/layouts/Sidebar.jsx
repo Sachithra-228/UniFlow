@@ -5,6 +5,7 @@ import {
   LayoutDashboard,
   Link2,
   PanelLeftClose,
+  LogOut,
   UserCircle2,
   Wrench,
   UsersRound,
@@ -12,7 +13,8 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
-import { fetchMyNotifications, fetchProfile } from "../api/campusApi";
+import { fetchMyNotifications, fetchProfile, getLogoutUrl } from "../api/campusApi";
+import { useToast } from "../hooks/useToast";
 import { cn } from "../utils/cn";
 import { normalizeRole } from "../utils/roles";
 
@@ -63,6 +65,20 @@ function Sidebar({ isMobileOpen, onClose, onCollapse, isCollapsed }) {
   const location = useLocation();
   const [role, setRole] = useState(null);
   const [unreadCount, setUnreadCount] = useState(0);
+  const { addToast } = useToast();
+
+  function handleLogout() {
+    addToast({
+      type: "success",
+      title: "Logout successful",
+      message: "You have been signed out.",
+    });
+
+    onClose?.();
+    window.setTimeout(() => {
+      window.location.href = getLogoutUrl();
+    }, 500);
+  }
 
   useEffect(() => {
     let mounted = true;
@@ -108,6 +124,7 @@ function Sidebar({ isMobileOpen, onClose, onCollapse, isCollapsed }) {
           role={role}
           isCollapsed={isCollapsed}
           onCollapse={onCollapse}
+          onLogout={handleLogout}
         />
       </aside>
 
@@ -118,13 +135,13 @@ function Sidebar({ isMobileOpen, onClose, onCollapse, isCollapsed }) {
           isMobileOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
-        <SidebarBody navItems={navItems} role={role} isMobile onClose={onClose} />
+        <SidebarBody navItems={navItems} role={role} isMobile onClose={onClose} onLogout={handleLogout} />
       </aside>
     </>
   );
 }
 
-function SidebarBody({ navItems, role, isCollapsed = false, isMobile = false, onClose, onCollapse }) {
+function SidebarBody({ navItems, role, isCollapsed = false, isMobile = false, onClose, onCollapse, onLogout }) {
   return (
     <div className="flex h-full flex-col p-4">
       <div className="mb-7 flex items-center justify-between">
@@ -189,6 +206,22 @@ function SidebarBody({ navItems, role, isCollapsed = false, isMobile = false, on
           </NavLink>
         ))}
       </nav>
+
+      <div className="mt-auto border-t border-[color:var(--border)] pt-4">
+        <button
+          type="button"
+          onClick={onLogout}
+          className={cn(
+            "group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-rose-700 transition hover:bg-rose-50 dark:text-rose-300 dark:hover:bg-rose-900/20",
+            isCollapsed && !isMobile && "justify-center px-2"
+          )}
+        >
+          <LogOut className="h-4 w-4 shrink-0" />
+          <span className={cn("transition-all", isCollapsed && !isMobile && "w-0 overflow-hidden opacity-0")}>
+            Logout
+          </span>
+        </button>
+      </div>
     </div>
   );
 }

@@ -170,6 +170,19 @@ export async function fetchProfile() {
   }
 }
 
+export async function updateProfile(payload) {
+  try {
+    const response = await api.patch("/profile", payload);
+    return { data: response.data };
+  } catch (error) {
+    if (error?.response?.status === 405) {
+      const response = await api.put("/profile", payload);
+      return { data: response.data };
+    }
+    throw error;
+  }
+}
+
 export async function updateBookingStatus(id, payload) {
   const response = await api.patch(`/api/bookings/${id}/status`, payload);
   return { data: response.data };
@@ -177,6 +190,10 @@ export async function updateBookingStatus(id, payload) {
 
 export function getGoogleLoginUrl() {
   return `${API_BASE_URL}/oauth2/authorization/google`;
+}
+
+export function getLogoutUrl() {
+  return `${API_BASE_URL}/logout`;
 }
 
 export async function fetchAdminLinkRequests(status) {

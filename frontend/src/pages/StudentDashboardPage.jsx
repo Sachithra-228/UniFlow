@@ -291,58 +291,83 @@ function StudentDashboardPage() {
   };
 
   return (
-    <div className="space-y-6 animate-fadeIn">
+    <div className="relative space-y-6 overflow-hidden animate-fadeIn">
+      <div className="pointer-events-none absolute -left-28 -top-20 h-56 w-56 rounded-full bg-cyan-400/15 blur-3xl" />
+      <div className="pointer-events-none absolute -right-16 top-44 h-64 w-64 rounded-full bg-blue-500/10 blur-3xl" />
+
       {/* Welcome Section */}
-      <Card className="p-6 bg-gradient-to-r from-[color:var(--brand)]/5 to-transparent border-l-4 border-l-[color:var(--brand)]">
-        <div className="flex items-start justify-between">
+      <Card className="relative overflow-hidden border-[color:var(--border)] bg-gradient-to-r from-[color:var(--brand)]/10 via-sky-500/5 to-transparent p-6 md:p-8">
+        <div className="pointer-events-none absolute -right-12 -top-12 h-44 w-44 rounded-full bg-[color:var(--brand)]/10 blur-2xl" />
+        <div className="pointer-events-none absolute -bottom-20 right-1/3 h-36 w-36 rounded-full bg-cyan-400/10 blur-2xl" />
+
+        <div className="relative flex items-start justify-between gap-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[color:var(--brand)]">
               Student Workspace
             </p>
-            <h2 className="mt-2 text-2xl font-bold">
+            <h2 className="mt-2 text-2xl font-bold md:text-4xl">
               {getGreeting()}, {profile?.firstName || profile?.name || "Student"}!
             </h2>
-            <p className="mt-2 text-sm text-[color:var(--text-muted)] max-w-2xl">
-              Welcome back to your learning hub. View your reservations, track support tickets, 
+            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-[color:var(--text-muted)] md:text-base">
+              Welcome back to your learning hub. View your reservations, track support tickets,
               and manage your campus activities all in one place.
             </p>
+
+            <div className="mt-4 flex flex-wrap gap-2 text-xs">
+              <span className="rounded-full border border-sky-200 bg-sky-50 px-3 py-1 font-semibold text-sky-700 dark:border-sky-800/70 dark:bg-sky-950/30 dark:text-sky-300">
+                {myBookings.length} Bookings
+              </span>
+              <span className="rounded-full border border-violet-200 bg-violet-50 px-3 py-1 font-semibold text-violet-700 dark:border-violet-800/70 dark:bg-violet-950/30 dark:text-violet-300">
+                {ticketSummary.total} Tickets
+              </span>
+              <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 font-semibold text-amber-700 dark:border-amber-800/70 dark:bg-amber-950/30 dark:text-amber-300">
+                {upcomingBookings.length} Upcoming
+              </span>
+            </div>
           </div>
-          <div className="hidden md:block text-4xl opacity-20">
+          <div className="hidden rounded-2xl border border-[color:var(--border)] bg-white/70 px-4 py-3 text-right shadow-sm backdrop-blur md:block dark:bg-[color:var(--bg-soft)]/70">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--text-muted)]">Campus Pulse</p>
+            <p className="mt-1 text-lg font-bold">Student Operations Hub</p>
+            <p className="text-xs text-[color:var(--text-muted)]">Everything you need, one workspace</p>
           </div>
         </div>
       </Card>
 
       {/* Stats Grid */}
       <div className="grid gap-4 md:grid-cols-4">
-        <MetricCard 
-          title="My Bookings" 
+        <MetricCard
+          title="My Bookings"
           value={myBookings.length}
           icon={CalendarClock}
           trend={myBookings.length > 0 ? "+ active" : "No bookings"}
+          tone="blue"
         />
-        <MetricCard 
-          title="Upcoming" 
+        <MetricCard
+          title="Upcoming"
           value={upcomingBookings.length}
           icon={CalendarClock}
           trend={upcomingBookings.length > 0 ? "Next 7 days" : "No upcoming"}
+          tone="teal"
         />
-        <MetricCard 
-          title="My Tickets" 
+        <MetricCard
+          title="My Tickets"
           value={ticketSummary.total}
           icon={ClipboardList}
           trend={`${ticketSummary.resolved} resolved`}
+          tone="violet"
         />
-        <MetricCard 
+        <MetricCard
           title="Open Tickets" 
           value={ticketSummary.open + ticketSummary.inProgress}
           icon={BellRing}
           trend="Need attention"
           alert={ticketSummary.open + ticketSummary.inProgress > 0}
+          tone="rose"
         />
       </div>
 
       {/* Bookings Section */}
-      <Card className="p-5 hover:shadow-lg transition-shadow duration-200">
+      <Card className="border-[color:var(--border)] bg-white/85 p-5 shadow-sm transition-shadow duration-200 hover:shadow-lg dark:bg-[color:var(--bg-soft)]/70">
         <div className="mb-4 flex items-center justify-between flex-wrap gap-3">
           <div>
             <h3 className="text-lg font-semibold flex items-center gap-2">
@@ -383,8 +408,9 @@ function StudentDashboardPage() {
             }
           />
         ) : (
-          <div className="fine-scrollbar overflow-x-auto">
-            <table className="min-w-full text-left text-sm">
+          <>
+            <div className="fine-scrollbar hidden overflow-x-auto rounded-2xl border border-[color:var(--border)] bg-white/70 md:block dark:bg-[color:var(--bg-soft)]/70">
+              <table className="min-w-full text-left text-sm">
               <thead className="text-xs uppercase tracking-[0.12em] text-[color:var(--text-muted)] border-b border-[color:var(--border)]">
                 <tr>
                   <th className="pb-3 pl-2">Resource</th>
@@ -398,20 +424,16 @@ function StudentDashboardPage() {
                 {myBookings.slice(0, 6).map((booking) => (
                   <tr 
                     key={booking.id}
-                    className="hover:bg-[color:var(--bg-soft)]/50 transition-colors group"
+                    className="group transition-colors hover:bg-[color:var(--bg-soft)]/45"
                   >
                     <td className="py-3 pl-2 font-semibold group-hover:text-[color:var(--brand)] transition-colors">
                       {booking.resourceName}
                     </td>
-                    <td className="py-3 text-xs">
-                      <span className="flex items-center gap-1">
-                        📅 {formatDateTime(booking.startTime)}
-                      </span>
+                    <td className="py-3 text-xs text-[color:var(--text-muted)]">
+                      {formatDateTime(booking.startTime)}
                     </td>
-                    <td className="py-3 text-xs">
-                      <span className="flex items-center gap-1">
-                        ⏰ {formatDateTime(booking.endTime)}
-                      </span>
+                    <td className="py-3 text-xs text-[color:var(--text-muted)]">
+                      {formatDateTime(booking.endTime)}
                     </td>
                     <td className="py-3">
                       <Badge value={booking.status} />
@@ -445,17 +467,67 @@ function StudentDashboardPage() {
                 ))}
               </tbody>
             </table>
-            {myBookings.length > 6 && (
+            </div>
+
+            <div className="space-y-3 md:hidden">
+              {myBookings.slice(0, 6).map((booking) => (
+                <div key={booking.id} className="rounded-2xl border border-[color:var(--border)] bg-white/80 p-4 shadow-sm dark:bg-[color:var(--bg-soft)]/80">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-bold">{booking.resourceName}</p>
+                      <p className="mt-1 text-xs text-[color:var(--text-muted)]">{booking.purpose || "No purpose"}</p>
+                    </div>
+                    <Badge value={booking.status} />
+                  </div>
+
+                  <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                    <div>
+                      <p className="text-[color:var(--text-muted)]">Start</p>
+                      <p className="font-semibold">{formatDateTime(booking.startTime)}</p>
+                    </div>
+                    <div>
+                      <p className="text-[color:var(--text-muted)]">End</p>
+                      <p className="font-semibold">{formatDateTime(booking.endTime)}</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-3">
+                    {canManageBooking(booking) ? (
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          aria-label="Edit booking"
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-sky-200 bg-sky-50 text-sky-700 transition hover:border-sky-400 hover:bg-sky-100 dark:border-sky-900/50 dark:bg-sky-950/30 dark:text-sky-300"
+                          onClick={() => openEditModal(booking)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          aria-label="Delete booking"
+                          disabled={deletingBookingId === booking.id}
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-rose-200 bg-rose-50 text-rose-700 transition hover:border-rose-400 hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-300"
+                          onClick={() => handleDeleteBooking(booking.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-[color:var(--text-muted)]">No action</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {myBookings.length > 6 ? (
               <div className="mt-4 text-center">
-                <Link 
-                  to="/bookings" 
-                  className="text-sm text-[color:var(--brand)] hover:underline"
-                >
+                <Link to="/bookings" className="text-sm text-[color:var(--brand)] hover:underline">
                   View all {myBookings.length} bookings →
                 </Link>
               </div>
-            )}
-          </div>
+            ) : null}
+          </>
         )}
       </Card>
 
@@ -597,11 +669,35 @@ function FormField({ label, className = "", children }) {
   );
 }
 
-function MetricCard({ title, value, icon: Icon, trend, alert }) {
+function MetricCard({ title, value, icon: Icon, trend, alert, tone = "blue" }) {
+  const toneStyles = {
+    blue: {
+      card: "border-sky-200/70 bg-gradient-to-br from-sky-50 to-white dark:border-sky-900/40 dark:from-sky-950/20 dark:to-[color:var(--bg-soft)]",
+      icon: "bg-sky-100 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300",
+      trend: "text-sky-700 dark:text-sky-300",
+    },
+    teal: {
+      card: "border-cyan-200/70 bg-gradient-to-br from-cyan-50 to-white dark:border-cyan-900/40 dark:from-cyan-950/20 dark:to-[color:var(--bg-soft)]",
+      icon: "bg-cyan-100 text-cyan-700 dark:bg-cyan-950/40 dark:text-cyan-300",
+      trend: "text-cyan-700 dark:text-cyan-300",
+    },
+    violet: {
+      card: "border-violet-200/70 bg-gradient-to-br from-violet-50 to-white dark:border-violet-900/40 dark:from-violet-950/20 dark:to-[color:var(--bg-soft)]",
+      icon: "bg-violet-100 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300",
+      trend: "text-violet-700 dark:text-violet-300",
+    },
+    rose: {
+      card: "border-rose-200/70 bg-gradient-to-br from-rose-50 to-white dark:border-rose-900/40 dark:from-rose-950/20 dark:to-[color:var(--bg-soft)]",
+      icon: "bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300",
+      trend: "text-rose-700 dark:text-rose-300",
+    },
+  };
+
+  const resolvedTone = alert ? "rose" : tone;
+  const palette = toneStyles[resolvedTone] || toneStyles.blue;
+
   return (
-    <Card className={`p-4 transition-all duration-200 hover:scale-105 hover:shadow-lg ${
-      alert ? 'border-l-4 border-l-red-500 bg-red-50/50 dark:bg-red-950/20' : ''
-    }`}>
+    <Card className={`border p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg ${palette.card}`}>
       <div className="flex items-start justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[color:var(--text-muted)]">
@@ -609,17 +705,13 @@ function MetricCard({ title, value, icon: Icon, trend, alert }) {
           </p>
           <p className="mt-2 text-3xl font-bold">{value}</p>
           {trend && (
-            <p className={`text-xs mt-1 ${
-              alert ? 'text-red-600 dark:text-red-400 font-semibold' : 'text-[color:var(--text-muted)]'
-            }`}>
+            <p className={`mt-1 text-xs font-semibold ${alert ? palette.trend : "text-[color:var(--text-muted)]"}`}>
               {trend}
             </p>
           )}
         </div>
         {Icon && (
-          <div className={`rounded-lg p-2 ${
-            alert ? 'bg-red-100 dark:bg-red-900/30 text-red-600' : 'bg-[color:var(--brand-soft)] text-[color:var(--brand)]'
-          }`}>
+          <div className={`rounded-xl p-2 ${palette.icon}`}>
             <Icon className="h-5 w-5" />
           </div>
         )}
@@ -646,7 +738,7 @@ function QuickAction({ to, icon: Icon, title, subtitle, color }) {
   return (
     <Link
       to={to}
-      className={`flex items-center gap-3 rounded-xl border border-[color:var(--border)] bg-white/70 p-4 transition-all duration-200 hover:shadow-md dark:bg-[color:var(--bg-soft)]/75 ${colorClasses[color]} group`}
+      className={`group flex items-center gap-3 rounded-2xl border border-[color:var(--border)] bg-white/80 p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg dark:bg-[color:var(--bg-soft)]/75 ${colorClasses[color]}`}
     >
       <span className={`rounded-lg p-2 transition-transform group-hover:scale-110 ${iconBgColors[color]}`}>
         <Icon className="h-4 w-4" />

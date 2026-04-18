@@ -248,12 +248,14 @@ public class TicketService {
         User actor = currentUserService.requireCurrentUser(oidcUser);
         Ticket ticket = getTicketOrThrow(ticketId);
         validateCanParticipateInComments(ticket, actor);
+        String normalizedComment = requestDTO.getComment().trim();
 
         TicketComment savedComment = ticketCommentRepository.save(
                 TicketComment.builder()
                         .ticket(ticket)
                         .author(actor)
-                        .comment(requestDTO.getComment().trim())
+                .comment(normalizedComment)
+                .legacyContent(normalizedComment)
                         .createdAt(LocalDateTime.now())
                         .updatedAt(LocalDateTime.now())
                         .build()
@@ -276,7 +278,9 @@ public class TicketService {
                 .orElseThrow(() -> new ResourceNotFoundException("TicketComment", commentId));
 
         validateCommentOwnershipOrAdmin(comment, actor);
-        comment.setComment(requestDTO.getComment().trim());
+        String normalizedComment = requestDTO.getComment().trim();
+        comment.setComment(normalizedComment);
+        comment.setLegacyContent(normalizedComment);
         comment.setUpdatedAt(LocalDateTime.now());
 
         TicketComment saved = ticketCommentRepository.save(comment);

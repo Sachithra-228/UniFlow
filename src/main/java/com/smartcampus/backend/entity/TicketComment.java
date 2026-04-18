@@ -41,6 +41,9 @@ public class TicketComment {
     @Column(nullable = false, length = 2000)
     private String comment;
 
+    @Column(name = "content", nullable = false, length = 2000)
+    private String legacyContent;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
@@ -49,6 +52,9 @@ public class TicketComment {
 
     @PrePersist
     public void onCreate() {
+        if (comment != null && !comment.isBlank()) {
+            legacyContent = comment;
+        }
         LocalDateTime now = LocalDateTime.now();
         if (createdAt == null) {
             createdAt = now;
@@ -60,6 +66,9 @@ public class TicketComment {
 
     @PreUpdate
     public void onUpdate() {
+        if (comment != null && !comment.isBlank()) {
+            legacyContent = comment;
+        }
         updatedAt = LocalDateTime.now();
     }
 }

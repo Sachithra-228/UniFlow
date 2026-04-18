@@ -1,6 +1,7 @@
 package com.smartcampus.backend.service;
 
 import com.smartcampus.backend.dto.AdminUpdateUserRequestDTO;
+import com.smartcampus.backend.dto.ProfileUpdateRequestDTO;
 import com.smartcampus.backend.dto.UserResponseDTO;
 import com.smartcampus.backend.entity.AccountStatus;
 import com.smartcampus.backend.entity.User;
@@ -42,6 +43,13 @@ public class UserService {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("User", id));
         return toUserResponse(user);
+    }
+
+    @Transactional
+    public User updateOwnProfile(OidcUser oidcUser, ProfileUpdateRequestDTO request) {
+        User user = resolveGoogleUser(oidcUser);
+        user.setName(request.getName().trim());
+        return userRepository.save(user);
     }
 
     @Transactional
@@ -128,7 +136,7 @@ public class UserService {
     }
 
     private void applyGoogleLink(User user, String googleEmail, String googleSubject, String displayName) {
-        if (displayName != null && !displayName.isBlank()) {
+        if ((user.getName() == null || user.getName().isBlank()) && displayName != null && !displayName.isBlank()) {
             user.setName(displayName);
         }
 

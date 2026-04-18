@@ -563,16 +563,19 @@ function TicketsPage() {
         </Card>
       ) : (
         <div className="space-y-4">
-          {filteredTickets.map((ticket) => {
+          {filteredTickets.map((ticket, index) => {
             const canEditComment = (comment) =>
               normalizeRole(role) === "ADMIN" || Number(comment.authorId) === Number(profile?.id);
+
+            const displayTicketNumber = index + 1;
 
             return (
               <Card key={ticket.id} className="p-5">
                 <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                   <div className="space-y-2">
                     <div className="flex flex-wrap items-center gap-2">
-                      <p className="text-sm font-semibold">Ticket #{ticket.id}</p>
+                      <p className="text-sm font-semibold">Ticket {displayTicketNumber}</p>
+                      <span className="text-xs text-[color:var(--text-muted)]">Ref #{ticket.id}</span>
                       <Badge value={ticket.status} />
                       <Badge value={ticket.priority} />
                       <Badge value={ticket.category} />

@@ -64,7 +64,7 @@ public class NotificationService {
     public void notifyTicketCreated(Ticket ticket) {
         createNotification(ticket.getCreatedBy(),
                 "Ticket Created",
-                "Ticket #" + ticket.getId() + " created successfully",
+                "Your support ticket #" + ticket.getId() + " was created successfully.",
                 NotificationType.INFO);
 
         List<User> admins = userRepository.findByRoleIgnoreCase(UserRole.ADMIN.name());
@@ -74,7 +74,7 @@ public class NotificationService {
             }
             createNotification(admin,
                     "New Ticket",
-                    "New ticket #" + ticket.getId() + " created by " + ticket.getCreatedBy().getName(),
+                    ticket.getCreatedBy().getName() + " created ticket #" + ticket.getId() + ".",
                     NotificationType.ALERT);
         }
     }
@@ -84,13 +84,13 @@ public class NotificationService {
         if (ticket.getAssignedTechnician() != null) {
             createNotification(ticket.getAssignedTechnician(),
                     "Ticket Assigned",
-                    "Ticket #" + ticket.getId() + " assigned to you",
+                    "Ticket #" + ticket.getId() + " is now assigned to you.",
                     NotificationType.ALERT);
         }
 
         createNotification(ticket.getCreatedBy(),
                 "Ticket Assignment Updated",
-                "Ticket #" + ticket.getId() + " assigned to " +
+                "Ticket #" + ticket.getId() + " was assigned to " +
                         (ticket.getAssignedTechnician() == null ? "a technician" : ticket.getAssignedTechnician().getName()),
                 NotificationType.INFO);
     }
@@ -101,9 +101,9 @@ public class NotificationService {
             return;
         }
 
-        String message = "Ticket #" + ticket.getId() + " status changed to " + ticket.getStatus();
+        String message = "Ticket #" + ticket.getId() + " moved to " + ticket.getStatus() + ".";
         if (ticket.getStatus() == TicketStatus.REJECTED && ticket.getRejectionReason() != null) {
-            message = message + " (Reason: " + ticket.getRejectionReason() + ")";
+            message = message + " Reason: " + ticket.getRejectionReason();
         }
 
         Set<Long> notifiedUserIds = new LinkedHashSet<>();

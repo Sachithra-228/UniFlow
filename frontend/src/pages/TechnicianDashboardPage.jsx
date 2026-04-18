@@ -1,7 +1,18 @@
-import { CalendarClock, ClipboardList, Settings2, UserCircle2, Wrench } from "lucide-react";
+import {
+  CalendarClock,
+  ClipboardList,
+  Settings2,
+  UserCircle2,
+  Wrench,
+} from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
-import { fetchAssignedTickets, fetchBookings, fetchProfile } from "../api/campusApi";
+import {
+  fetchAssignedTickets,
+  fetchBookings,
+  fetchProfile,
+} from "../api/campusApi";
+import Button from "../components/common/Button";
 import Badge from "../components/common/Badge";
 import Card from "../components/common/Card";
 import EmptyState from "../components/common/EmptyState";
@@ -21,11 +32,12 @@ function TechnicianDashboardPage() {
     async function loadData() {
       setLoading(true);
       try {
-        const [profileResult, bookingsResult, ticketsResult] = await Promise.allSettled([
-          fetchProfile(),
-          fetchBookings({ page: 0, size: 300 }),
-          fetchAssignedTickets({ page: 0, size: 300 }),
-        ]);
+        const [profileResult, bookingsResult, ticketsResult] =
+          await Promise.allSettled([
+            fetchProfile(),
+            fetchBookings({ page: 0, size: 300 }),
+            fetchAssignedTickets({ page: 0, size: 300 }),
+          ]);
 
         if (profileResult.status === "fulfilled") {
           setRole(normalizeRole(profileResult.value?.data?.role));
@@ -44,7 +56,9 @@ function TechnicianDashboardPage() {
           addToast({
             type: "error",
             title: "Assigned tickets unavailable",
-            message: ticketsResult.reason?.response?.data?.message || "Ticket queue could not be loaded right now.",
+            message:
+              ticketsResult.reason?.response?.data?.message ||
+              "Ticket queue could not be loaded right now.",
           });
         }
 
@@ -60,19 +74,24 @@ function TechnicianDashboardPage() {
           profileResult.status === "fulfilled" &&
           bookingsResult.status === "fulfilled" &&
           ticketsResult.status === "fulfilled" &&
-          (bookingsResult.value.isFallback || profileResult.value.isFallback || ticketsResult.value.isFallback)
+          (bookingsResult.value.isFallback ||
+            profileResult.value.isFallback ||
+            ticketsResult.value.isFallback)
         ) {
           addToast({
             type: "info",
             title: "Fallback mode active",
-            message: "Using local fallback values for part of technician dashboard data.",
+            message:
+              "Using local fallback values for part of technician dashboard data.",
           });
         }
       } catch (error) {
         addToast({
           type: "error",
           title: "Technician dashboard unavailable",
-          message: error?.response?.data?.message || "Failed to load technician dashboard data.",
+          message:
+            error?.response?.data?.message ||
+            "Failed to load technician dashboard data.",
         });
       } finally {
         setLoading(false);
@@ -83,18 +102,28 @@ function TechnicianDashboardPage() {
   }, [addToast]);
 
   const operationalBookings = useMemo(
-    () => [...bookings].sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime()).slice(0, 6),
-    [bookings]
+    () =>
+      [...bookings]
+        .sort(
+          (a, b) =>
+            new Date(a.startTime).getTime() - new Date(b.startTime).getTime(),
+        )
+        .slice(0, 6),
+    [bookings],
   );
 
   const ticketSummary = useMemo(
     () => ({
       assigned: assignedTickets.length,
-      inProgress: assignedTickets.filter((ticket) => ticket.status === "IN_PROGRESS").length,
-      resolved: assignedTickets.filter((ticket) => ticket.status === "RESOLVED").length,
-      closed: assignedTickets.filter((ticket) => ticket.status === "CLOSED").length,
+      inProgress: assignedTickets.filter(
+        (ticket) => ticket.status === "IN_PROGRESS",
+      ).length,
+      resolved: assignedTickets.filter((ticket) => ticket.status === "RESOLVED")
+        .length,
+      closed: assignedTickets.filter((ticket) => ticket.status === "CLOSED")
+        .length,
     }),
-    [assignedTickets]
+    [assignedTickets],
   );
 
   if (role && role !== "TECHNICIAN") {
@@ -103,18 +132,41 @@ function TechnicianDashboardPage() {
 
   return (
     <div className="space-y-6">
-      <Card className="p-6">
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[color:var(--text-muted)]">Technician Workspace</p>
-        <h2 className="mt-2 text-2xl font-bold">Technician Dashboard</h2>
-        <p className="mt-2 text-sm text-[color:var(--text-muted)]">
-          Track assigned maintenance workflows and keep resource issue resolution aligned with live operations.
-        </p>
+      <Card className="p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[color:var(--text-muted)]">
+            Technician Workspace
+          </p>
+          <h2 className="mt-2 text-2xl font-bold">Technician Dashboard</h2>
+          <p className="mt-2 text-sm text-[color:var(--text-muted)]">
+            Track assigned maintenance workflows and keep resource issue
+            resolution aligned with live operations.
+          </p>
+        </div>
+        <div className="flex items-center gap-4">
+          <div className="text-right">
+            <p className="text-xs text-[color:var(--text-muted)]">
+              Assigned to you
+            </p>
+            <p className="mt-1 text-3xl font-bold">{ticketSummary.assigned}</p>
+          </div>
+          <div>
+            <Button
+              onClick={() => (window.location.href = "/tickets?view=assigned")}
+            >
+              Open assigned tickets
+            </Button>
+          </div>
+        </div>
       </Card>
 
       <div className="grid gap-4 md:grid-cols-3">
         <MetricCard title="Assigned Tickets" value={ticketSummary.assigned} />
         <MetricCard title="In Progress" value={ticketSummary.inProgress} />
-        <MetricCard title="Resolved / Closed" value={ticketSummary.resolved + ticketSummary.closed} />
+        <MetricCard
+          title="Resolved / Closed"
+          value={ticketSummary.resolved + ticketSummary.closed}
+        />
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
@@ -138,7 +190,10 @@ function TechnicianDashboardPage() {
       <Card className="p-5">
         <div className="mb-3 flex items-center justify-between">
           <h3 className="text-lg font-semibold">Operational Booking Context</h3>
-          <Link to="/bookings" className="text-sm font-semibold text-[color:var(--brand)] hover:underline">
+          <Link
+            to="/bookings"
+            className="text-sm font-semibold text-[color:var(--brand)] hover:underline"
+          >
             Open bookings
           </Link>
         </div>
@@ -167,12 +222,18 @@ function TechnicianDashboardPage() {
               <tbody className="divide-y divide-[color:var(--border)]">
                 {operationalBookings.map((booking) => (
                   <tr key={booking.id}>
-                    <td className="py-3 font-semibold">{booking.resourceName}</td>
-                    <td className="py-3 text-xs">{formatDateTime(booking.startTime)}</td>
+                    <td className="py-3 font-semibold">
+                      {booking.resourceName}
+                    </td>
+                    <td className="py-3 text-xs">
+                      {formatDateTime(booking.startTime)}
+                    </td>
                     <td className="py-3">
                       <Badge value={booking.status} />
                     </td>
-                    <td className="py-3 text-xs text-[color:var(--text-muted)]">{booking.purpose || "N/A"}</td>
+                    <td className="py-3 text-xs text-[color:var(--text-muted)]">
+                      {booking.purpose || "N/A"}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -220,7 +281,9 @@ function TechnicianDashboardPage() {
 function MetricCard({ title, value }) {
   return (
     <Card className="p-4">
-      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[color:var(--text-muted)]">{title}</p>
+      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[color:var(--text-muted)]">
+        {title}
+      </p>
       <p className="mt-2 text-2xl font-bold">{value}</p>
     </Card>
   );
@@ -233,7 +296,9 @@ function WorkflowCard({ icon: Icon, title, description }) {
         <Icon className="h-4 w-4" />
       </span>
       <p className="mt-3 font-semibold">{title}</p>
-      <p className="mt-1 text-xs text-[color:var(--text-muted)]">{description}</p>
+      <p className="mt-1 text-xs text-[color:var(--text-muted)]">
+        {description}
+      </p>
     </Card>
   );
 }

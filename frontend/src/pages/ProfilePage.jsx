@@ -1,6 +1,6 @@
-import { KeyRound, Mail, ShieldCheck, UserCircle2 } from "lucide-react";
+import { KeyRound, LogOut, Mail, ShieldCheck, UserCircle2 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { fetchProfile, getGoogleLoginUrl } from "../api/campusApi";
+import { fetchProfile, getGoogleLoginUrl, getLogoutUrl } from "../api/campusApi";
 import Badge from "../components/common/Badge";
 import Button from "../components/common/Button";
 import Card from "../components/common/Card";
@@ -41,6 +41,10 @@ function ProfilePage() {
 
     loadProfile();
   }, [addToast]);
+
+  function handleLogout() {
+    window.location.href = getLogoutUrl();
+  }
 
   if (loading) {
     return (
@@ -97,6 +101,13 @@ function ProfilePage() {
           <ProfileField icon={ShieldCheck} label="Role" value={<Badge value={profile?.role} />} />
           <ProfileField icon={ShieldCheck} label="Provider" value={<Badge value={profile?.provider} />} />
           <ProfileField icon={KeyRound} label="Provider ID" value={profile?.providerId} />
+        </div>
+
+        <div className="mt-6 flex justify-end">
+          <Button variant="secondary" onClick={handleLogout}>
+            <LogOut className="h-4 w-4" />
+            Logout
+          </Button>
         </div>
       </div>
     </Card>

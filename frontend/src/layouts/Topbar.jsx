@@ -1,7 +1,7 @@
-import { BellRing, Menu, Search, ShieldCheck } from "lucide-react";
+import { BellRing, LogOut, Menu, Search, ShieldCheck } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { fetchMyNotifications } from "../api/campusApi";
+import { fetchMyNotifications, getLogoutUrl } from "../api/campusApi";
 import ThemeToggle from "../components/common/ThemeToggle";
 import { PAGE_TITLES } from "../utils/constants";
 
@@ -28,6 +28,10 @@ function Topbar({ onMenuClick }) {
       mounted = false;
     };
   }, [location.pathname]);
+
+  function handleLogout() {
+    window.location.href = getLogoutUrl();
+  }
 
   return (
     <header className="sticky top-0 z-40 border-b border-[color:var(--border)] bg-[color:var(--bg)]/80 px-4 py-3 backdrop-blur-lg md:px-6">
@@ -79,6 +83,15 @@ function Topbar({ onMenuClick }) {
         >
           <ShieldCheck className="h-4 w-4" />
           Profile
+        </button>
+
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="inline-flex items-center gap-2 rounded-xl border border-[color:var(--border)] bg-white/75 px-3 py-2 text-sm font-semibold text-rose-700 dark:bg-[color:var(--bg-soft)]/80 dark:text-rose-300"
+        >
+          <LogOut className="h-4 w-4" />
+          <span className="hidden md:inline">Logout</span>
         </button>
       </div>
     </header>

@@ -147,9 +147,10 @@ function NotificationsPage() {
                   <div className="flex flex-wrap items-center gap-2">
                     <BellRing className="h-4 w-4 text-[color:var(--brand)]" />
                     <Badge value={notification.type} />
-                    <Badge value={notification.readStatus ? "RESOLVED" : "OPEN"} />
+                    <Badge value={notification.readStatus ? "READ" : "UNREAD"} />
                   </div>
-                  <p className="mt-2 text-sm font-semibold">{notification.message}</p>
+                  <p className="mt-2 text-sm font-semibold">{notification.title}</p>
+                  <p className="mt-1 text-sm text-[color:var(--text-muted)]">{notification.message}</p>
                   <p className="mt-1 text-xs text-[color:var(--text-muted)]">{formatDateTime(notification.createdAt)}</p>
                 </div>
                 <div className="flex items-center gap-2">

@@ -172,6 +172,10 @@ export function getGoogleLoginUrl() {
   return `${API_BASE_URL}/oauth2/authorization/google`;
 }
 
+export function getLogoutUrl() {
+  return `${API_BASE_URL}/logout`;
+}
+
 export async function fetchAdminLinkRequests(status) {
   const params = status ? { status } : {};
   const response = await api.get("/api/admin/link-requests", { params });

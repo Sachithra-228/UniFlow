@@ -97,6 +97,18 @@ function StudentDashboardPage() {
     [tickets]
   );
 
+  const recentTickets = useMemo(
+    () =>
+      [...tickets]
+        .sort(
+          (a, b) =>
+            new Date(b.updatedAt ?? b.createdAt ?? 0).getTime()
+            - new Date(a.updatedAt ?? a.createdAt ?? 0).getTime()
+        )
+        .slice(0, 4),
+    [tickets]
+  );
+
   const minDateTimeLocal = useMemo(() => {
     const now = new Date();
     const tzOffsetMs = now.getTimezoneOffset() * 60 * 1000;
@@ -291,12 +303,12 @@ function StudentDashboardPage() {
   };
 
   return (
-    <div className="relative space-y-6 overflow-hidden animate-fadeIn">
+    <div className="relative mx-auto max-w-[1240px] space-y-6 overflow-hidden animate-fadeIn">
       <div className="pointer-events-none absolute -left-28 -top-20 h-56 w-56 rounded-full bg-cyan-400/15 blur-3xl" />
       <div className="pointer-events-none absolute -right-16 top-44 h-64 w-64 rounded-full bg-blue-500/10 blur-3xl" />
 
       {/* Welcome Section */}
-      <Card className="relative overflow-hidden border-[color:var(--border)] bg-gradient-to-r from-[color:var(--brand)]/10 via-sky-500/5 to-transparent p-6 md:p-8">
+      <Card className="relative overflow-hidden border-[color:var(--border)] bg-gradient-to-r from-[color:var(--brand)]/10 via-sky-500/5 to-transparent p-5 md:p-8">
         <div className="pointer-events-none absolute -right-12 -top-12 h-44 w-44 rounded-full bg-[color:var(--brand)]/10 blur-2xl" />
         <div className="pointer-events-none absolute -bottom-20 right-1/3 h-36 w-36 rounded-full bg-cyan-400/10 blur-2xl" />
 
@@ -305,7 +317,7 @@ function StudentDashboardPage() {
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[color:var(--brand)]">
               Student Workspace
             </p>
-            <h2 className="mt-2 text-2xl font-bold md:text-4xl">
+            <h2 className="mt-2 text-3xl font-bold leading-tight md:text-4xl">
               {getGreeting()}, {profile?.firstName || profile?.name || "Student"}!
             </h2>
             <p className="mt-3 max-w-2xl text-sm leading-relaxed text-[color:var(--text-muted)] md:text-base">
@@ -325,7 +337,7 @@ function StudentDashboardPage() {
               </span>
             </div>
           </div>
-          <div className="hidden rounded-2xl border border-[color:var(--border)] bg-white/70 px-4 py-3 text-right shadow-sm backdrop-blur md:block dark:bg-[color:var(--bg-soft)]/70">
+          <div className="hidden rounded-2xl border border-[color:var(--border)] bg-white/70 px-4 py-3 text-right shadow-sm backdrop-blur lg:block dark:bg-[color:var(--bg-soft)]/70">
             <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--text-muted)]">Campus Pulse</p>
             <p className="mt-1 text-lg font-bold">Student Operations Hub</p>
             <p className="text-xs text-[color:var(--text-muted)]">Everything you need, one workspace</p>
@@ -334,36 +346,48 @@ function StudentDashboardPage() {
       </Card>
 
       {/* Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <MetricCard
-          title="My Bookings"
-          value={myBookings.length}
-          icon={CalendarClock}
-          trend={myBookings.length > 0 ? "+ active" : "No bookings"}
-          tone="blue"
-        />
-        <MetricCard
-          title="Upcoming"
-          value={upcomingBookings.length}
-          icon={CalendarClock}
-          trend={upcomingBookings.length > 0 ? "Next 7 days" : "No upcoming"}
-          tone="teal"
-        />
-        <MetricCard
-          title="My Tickets"
-          value={ticketSummary.total}
-          icon={ClipboardList}
-          trend={`${ticketSummary.resolved} resolved`}
-          tone="violet"
-        />
-        <MetricCard
-          title="Open Tickets" 
-          value={ticketSummary.open + ticketSummary.inProgress}
-          icon={BellRing}
-          trend="Need attention"
-          alert={ticketSummary.open + ticketSummary.inProgress > 0}
-          tone="rose"
-        />
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {loading ? (
+          Array.from({ length: 4 }).map((_, index) => (
+            <LoadingSkeleton key={index} className="h-[112px] rounded-2xl" />
+          ))
+        ) : (
+          <>
+            <MetricCard
+              title="My Bookings"
+              value={myBookings.length}
+              icon={CalendarClock}
+              trend={myBookings.length > 0 ? "+ active" : "No bookings"}
+              tone="blue"
+              to="/bookings"
+            />
+            <MetricCard
+              title="Upcoming"
+              value={upcomingBookings.length}
+              icon={CalendarClock}
+              trend={upcomingBookings.length > 0 ? "Next 7 days" : "No upcoming"}
+              tone="teal"
+              to="/bookings"
+            />
+            <MetricCard
+              title="My Tickets"
+              value={ticketSummary.total}
+              icon={ClipboardList}
+              trend={`${ticketSummary.resolved} resolved`}
+              tone="violet"
+              to="/tickets"
+            />
+            <MetricCard
+              title="Open Tickets"
+              value={ticketSummary.open + ticketSummary.inProgress}
+              icon={BellRing}
+              trend="Need attention"
+              alert={ticketSummary.open + ticketSummary.inProgress > 0}
+              tone="rose"
+              to="/tickets"
+            />
+          </>
+        )}
       </div>
 
       {/* Bookings Section */}
@@ -380,7 +404,7 @@ function StudentDashboardPage() {
           </div>
           <Link 
             to="/bookings" 
-            className="text-sm font-semibold text-[color:var(--brand)] hover:text-[color:var(--brand-dark)] transition-colors flex items-center gap-1 group"
+            className="text-sm font-semibold text-[color:var(--brand)] hover:text-[color:var(--brand-dark)] transition-colors flex items-center gap-1 group whitespace-nowrap"
           >
             Open bookings
             <span className="group-hover:translate-x-0.5 transition-transform">→</span>
@@ -531,6 +555,60 @@ function StudentDashboardPage() {
         )}
       </Card>
 
+      <Card className="border-[color:var(--border)] bg-white/85 p-5 shadow-sm transition-shadow duration-200 hover:shadow-lg dark:bg-[color:var(--bg-soft)]/70">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 className="text-lg font-semibold flex items-center gap-2">
+              <ClipboardList className="h-5 w-5 text-[color:var(--brand)]" />
+              Recent Tickets
+            </h3>
+            <p className="mt-1 text-xs text-[color:var(--text-muted)]">
+              Latest support requests and their current statuses.
+            </p>
+          </div>
+          <Link
+            to="/tickets"
+            className="text-sm font-semibold text-[color:var(--brand)] hover:text-[color:var(--brand-dark)] transition-colors"
+          >
+            Open tickets →
+          </Link>
+        </div>
+
+        {loading ? (
+          <div className="space-y-3">
+            {Array.from({ length: 4 }).map((_, index) => (
+              <LoadingSkeleton key={index} className="h-14 rounded-xl" />
+            ))}
+          </div>
+        ) : recentTickets.length === 0 ? (
+          <EmptyState
+            title="No tickets yet"
+            description="Create a ticket to track maintenance or support requests."
+          />
+        ) : (
+          <div className="space-y-3">
+            {recentTickets.map((ticket) => (
+              <div
+                key={ticket.id}
+                className="rounded-xl border border-[color:var(--border)] bg-white/70 px-4 py-3 dark:bg-[color:var(--bg-soft)]/75"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="font-semibold">Ticket #{ticket.id}</p>
+                  <div className="flex items-center gap-2">
+                    <Badge value={ticket.status} />
+                    <Badge value={ticket.priority} />
+                  </div>
+                </div>
+                <p className="mt-2 text-sm text-[color:var(--text-muted)] line-clamp-2">{ticket.description}</p>
+                <p className="mt-2 text-xs text-[color:var(--text-muted)]">
+                  Updated: {formatDateTime(ticket.updatedAt ?? ticket.createdAt)}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+
       {/* Quick Actions Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <QuickAction
@@ -669,7 +747,7 @@ function FormField({ label, className = "", children }) {
   );
 }
 
-function MetricCard({ title, value, icon: Icon, trend, alert, tone = "blue" }) {
+function MetricCard({ title, value, icon: Icon, trend, alert, tone = "blue", to }) {
   const toneStyles = {
     blue: {
       card: "border-sky-200/70 bg-gradient-to-br from-sky-50 to-white dark:border-sky-900/40 dark:from-sky-950/20 dark:to-[color:var(--bg-soft)]",
@@ -696,7 +774,7 @@ function MetricCard({ title, value, icon: Icon, trend, alert, tone = "blue" }) {
   const resolvedTone = alert ? "rose" : tone;
   const palette = toneStyles[resolvedTone] || toneStyles.blue;
 
-  return (
+  const content = (
     <Card className={`border p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg ${palette.card}`}>
       <div className="flex items-start justify-between">
         <div>
@@ -718,6 +796,16 @@ function MetricCard({ title, value, icon: Icon, trend, alert, tone = "blue" }) {
       </div>
     </Card>
   );
+
+  if (to) {
+    return (
+      <Link to={to} className="block">
+        {content}
+      </Link>
+    );
+  }
+
+  return content;
 }
 
 function QuickAction({ to, icon: Icon, title, subtitle, color }) {

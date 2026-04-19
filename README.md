@@ -9,7 +9,7 @@ Backend
 - PostgreSQL
 
 Frontend
-- React + Vite
+- React +  Vite
 - Tailwind CSS
 - React Router, Axios
 - Lucide React icons
